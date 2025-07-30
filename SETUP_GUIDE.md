@@ -146,13 +146,9 @@ npm install
 This will install all required dependencies including:
 - Authentication libraries (bcrypt, jsonwebtoken)
 - HTTP server (express)
-
-Make Sure Following Repositeries are present in the Root of BackEnd Code
-- Worker framework (`bfx-wrk-base`) : https://github.com/bitfinexcom/bfx-wrk-base
-- P2P networking (`hp-svc-facs-net`) : https://github.com/tetherto/hp-svc-facs-net
-- Storage facilities (`hp-svc-facs-store`) : https://github.com/tetherto/hp-svc-facs-store
-
-You can just clone these into your BackEnd Folder
+- Worker framework (bfx-wrk-base)
+- P2P networking (hp-svc-facs-net)
+- Storage facilities (hp-svc-facs-store)
 
 ### 2. Directory Structure (Auto-Created)
 
