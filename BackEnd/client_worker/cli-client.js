@@ -2,6 +2,7 @@
 
 const ClientWorker = require('./client-worker.js')
 const readline = require('readline')
+const logger = require('../shared-logger.js')
 
 // Create worker instance
 const conf = {
@@ -17,15 +18,23 @@ const ctx = {
 
 console.log('🚀 Starting CLI Client...')
 
+logger.lifecycle('CLIClient', 'STARTING', { interface: 'command_line' })
+
 try {
   const worker = new ClientWorker(conf, ctx)
   
   // Start the worker
   worker.start((err) => {
     if (err) {
+      logger.error('CLIClient', 'STARTUP', 'Failed to start Client Worker', {
+        error: err.message,
+        stack: err.stack
+      })
       console.error('❌ Failed to start Client Worker:', err)
       process.exit(1)
     }
+    
+    logger.lifecycle('CLIClient', 'STARTED', { ready: true })
     
     console.log('💡 Available commands:')
     console.log('💡   • Type any prompt to send to the AI model')
@@ -168,6 +177,12 @@ try {
             }
           }
         } catch (error) {
+          const errorRequestId = Math.random().toString(36).substr(2, 9)
+          logger.error('CLIClient', errorRequestId, 'CLI command execution failed', {
+            input: input,
+            error: error.message,
+            stack: error.stack
+          })
           console.error('❌ Request failed:', error.message)
         } finally {
           isProcessing = false
@@ -185,18 +200,24 @@ try {
   
   // Graceful shutdown
   process.on('SIGINT', () => {
+    logger.lifecycle('CLIClient', 'SHUTDOWN', { signal: 'SIGINT' })
     console.log('\n🛑 Shutting down CLI Client...')
     worker.stop()
     process.exit(0)
   })
   
   process.on('SIGTERM', () => {
+    logger.lifecycle('CLIClient', 'SHUTDOWN', { signal: 'SIGTERM' })
     console.log('\n🛑 Shutting down CLI Client...')
     worker.stop()
     process.exit(0)
   })
   
 } catch (error) {
+  logger.error('CLIClient', 'STARTUP', 'Failed to create Client Worker', {
+    error: error.message,
+    stack: error.stack
+  })
   console.error('❌ Failed to create Client Worker:', error.message)
   process.exit(1)
 } 

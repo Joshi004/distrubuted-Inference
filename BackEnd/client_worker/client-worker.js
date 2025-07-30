@@ -1,11 +1,8 @@
 'use strict'
 
-console.log('🚀 Client Worker starting...')
-
 // Load dependencies with error handling
 try {
   const Base = require('../bfx-wrk-base/base.js')
-  console.log('✅ Successfully loaded bfx-wrk-base')
 } catch (error) {
   console.error('❌ Failed to load bfx-wrk-base:', error.message)
   process.exit(1)
@@ -22,7 +19,7 @@ class ClientWorker extends Base {
     
     // Initialize session key for auth
     this.sessionKey = null
-    console.log('🔐 Session key initialized')
+    logger.debug('ClientWorker', 'INIT', 'Session key initialized', null)
     
     this.setInitFacs([
       ['fac', 'hp-svc-facs-store', null, 's0', { storeDir: './data/client' }, 0],
@@ -31,36 +28,37 @@ class ClientWorker extends Base {
   }
   
   async _start(cb) {
-    console.log('▶️  Starting Client Worker...')
+    logger.lifecycle('ClientWorker', 'STARTING', {
+      robustDht: true,
+      facilities: ['hp-svc-facs-store', 'hp-svc-facs-net']
+    })
     
     try {
       // Check if net facility is available
       if (!this.net_default) {
-        console.error('❌ net_default facility not available')
-        return cb(new Error('net_default facility not available'))
+        const error = new Error('net_default facility not available')
+        logger.error('ClientWorker', 'STARTUP', 'Net facility not available', {
+          error: error.message
+        })
+        return cb(error)
       }
       
       // Start RPC client
       await this.net_default.startRpc()
-      console.log('✅ RPC client started')
+      logger.info('ClientWorker', 'STARTUP', 'RPC client started successfully', null)
       
       // Start lookup
       this.net_default.startLookup()
-      console.log('✅ Lookup service started')
+      logger.info('ClientWorker', 'STARTUP', 'Lookup service started successfully', null)
       
-      console.log('')
-      console.log('🛡️  ROBUST DHT CONNECTION ENABLED')
-      console.log('   All requests try every available service key until one succeeds')
-      console.log('   This automatically handles stale announcements and service failures')
-      console.log('')
-      console.log('🎉 Client Worker ready!')
+      logger.lifecycle('ClientWorker', 'STARTED', {
+        robustDhtEnabled: true,
+        features: ['robust_retries', 'stale_announcement_handling', 'service_failure_recovery']
+      })
       
       cb()
       
     } catch (error) {
-      console.error('❌ Error starting Client Worker:', error)
-      
-      // Log the startup error to error.log
       logger.error('ClientWorker', 'STARTUP', 'Failed to start Client Worker', {
         error: error.message,
         stack: error.stack
@@ -103,9 +101,9 @@ class ClientWorker extends Base {
 
   
   stop() {
-    console.log('🛑 Client Worker stopping...')
+    logger.lifecycle('ClientWorker', 'STOPPING', null)
     super.stop()
-    console.log('✅ Client Worker stopped')
+    logger.lifecycle('ClientWorker', 'STOPPED', null)
   }
 }
 

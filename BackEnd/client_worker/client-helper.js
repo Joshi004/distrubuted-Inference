@@ -82,9 +82,30 @@ class ClientHelper {
     return new Promise(resolve => setTimeout(resolve, ms))
   }
   
+  // Helper method to detect stale DHT announcement errors
+  static isStaleAnnouncementError(error) {
+    const staleIndicators = [
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'connection timeout',
+      'no route to host'
+    ]
+    
+    return staleIndicators.some(indicator => 
+      error.message.toLowerCase().includes(indicator.toLowerCase())
+    )
+  }
+  
   // Method for sending AI prompts to the gateway
   static async sendRequest(workerInstance, inputPrompt) {
-    console.log(`\n📤 Sending prompt: "${inputPrompt}"`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    
+    logger.info('ClientWorker', requestId, 'Sending prompt to gateway', {
+      promptLength: inputPrompt.length,
+      promptPreview: inputPrompt.length > 100 ? inputPrompt.substring(0, 100) + '...' : inputPrompt
+    })
     
     try {
       const result = await ClientHelper.authorizedTopicRequest(
@@ -95,47 +116,41 @@ class ClientHelper {
       )
       
       if (result.response) {
-        console.log(`✅ AI Response received`)
+        logger.info('ClientWorker', requestId, 'AI response received successfully', {
+          responseLength: result.response.length
+        })
       } else if (result.error) {
-        console.error(`❌ Error: ${result.message}`)
+        logger.warn('ClientWorker', requestId, 'Gateway returned error response', {
+          error: result.message
+        })
       }
       
       return result
       
     } catch (error) {
-      console.error(`❌ Request failed: ${error.message}`)
-      
-      // Log all request failures to error.log with appropriate context
-      const requestId = Math.random().toString(36).substr(2, 9)
-      
       if (error.message.includes('ERR_TOPIC_LOOKUP_EMPTY')) {
         logger.error('ClientWorker', requestId, 'Topic lookup empty - gateway worker may not be running', {
           method: 'processPrompt',
           error: error.message
         })
-        console.error(`💡 Hint: Make sure the gateway worker is running`)
       } else if (error.message.includes('UNKNOWN_METHOD')) {
         logger.error('ClientWorker', requestId, 'Unknown method - gateway method registration may have failed', {
           method: 'processPrompt',
           error: error.message
         })
-        console.error(`💡 Hint: Gateway method registration may have failed`)
       } else if (error.message.includes('CHANNEL_CLOSED')) {
         logger.error('ClientWorker', requestId, 'Channel closed - connection lost during request', {
           method: 'processPrompt',
           error: error.message,
           hint: 'Network issues, service restarts, or stale DHT announcements'
         })
-        console.error(`💡 Hint: Connection was closed, this may indicate network issues, service restarts, or stale DHT announcements`)
       } else if (ClientHelper.isStaleAnnouncementError(error)) {
         logger.error('ClientWorker', requestId, 'Possible stale DHT announcement detected', {
           method: 'processPrompt',
           error: error.message,
           hint: 'Service may have been announced but is no longer reachable'
         })
-        console.error(`💡 Hint: This may be a stale DHT announcement. Try waiting a few minutes or restart the gateway service`)
       } else {
-        // Log any other unexpected errors
         logger.error('ClientWorker', requestId, 'Request failed with unexpected error', {
           method: 'processPrompt',
           error: error.message,
@@ -149,7 +164,11 @@ class ClientHelper {
   
   // Method for user registration
   static async registerUser(workerInstance, email, password) {
-    console.log(`\n📝 Registering user: "${email}"`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    
+    logger.info('ClientWorker', requestId, 'Starting user registration', {
+      email: email
+    })
     
     try {
       const result = await ClientHelper.authorizedTopicRequest(
@@ -159,17 +178,37 @@ class ClientHelper {
         { email, password }
       )
       
+      if (result.success) {
+        logger.info('ClientWorker', requestId, 'User registration successful', {
+          email: result.email,
+          status: result.status
+        })
+      } else {
+        logger.warn('ClientWorker', requestId, 'User registration failed', {
+          email: email,
+          message: result.message
+        })
+      }
+      
       return result
       
     } catch (error) {
-      console.error(`❌ Registration failed: ${error.message}`)
+      logger.error('ClientWorker', requestId, 'User registration error', {
+        email: email,
+        error: error.message,
+        stack: error.stack
+      })
       throw error
     }
   }
   
   // Method for user login
   static async loginUser(workerInstance, email, password) {
-    console.log(`\n🔐 Logging in user: "${email}"`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    
+    logger.info('ClientWorker', requestId, 'Starting user login', {
+      email: email
+    })
     
     try {
       const result = await ClientHelper.authorizedTopicRequest(
@@ -182,33 +221,49 @@ class ClientHelper {
       // Store session key if login successful
       if (result.success && result.key) {
         workerInstance.sessionKey = result.key
-        logger.jwt('ClientWorker', 'LOGIN', 'Session Key Stored', {
+        logger.jwt('ClientWorker', requestId, 'Session Key Stored', {
           email,
           tokenPreview: result.key.substring(0, 20) + '...',
           tokenLength: result.key.length
+        })
+        logger.info('ClientWorker', requestId, 'User login successful', {
+          email: result.email,
+          status: result.status
+        })
+      } else {
+        logger.warn('ClientWorker', requestId, 'User login failed', {
+          email: email,
+          message: result.message
         })
       }
       
       return result
       
     } catch (error) {
-      console.error(`❌ Login failed: ${error.message}`)
+      logger.error('ClientWorker', requestId, 'User login error', {
+        email: email,
+        error: error.message,
+        stack: error.stack
+      })
       throw error
     }
   }
   
   // Method for user logout
   static logout(workerInstance) {
-    console.log(`\n🚪 Logging out...`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    
+    logger.info('ClientWorker', requestId, 'User logout initiated', null)
     
     if (workerInstance.sessionKey) {
       workerInstance.sessionKey = null
-      console.log(`🔑 Session key cleared`)
+      logger.info('ClientWorker', requestId, 'Session key cleared - logout successful', null)
       return {
         success: true,
         message: 'Logged out successfully'
       }
     } else {
+      logger.warn('ClientWorker', requestId, 'Logout attempted with no active session', null)
       return {
         success: false,
         message: 'No active session to logout'
@@ -218,17 +273,21 @@ class ClientHelper {
   
   // Method to get current API token
   static getApiToken(workerInstance) {
-    console.log(`\n🔑 Getting API token...`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    
+    logger.debug('ClientWorker', requestId, 'API token retrieval requested', null)
     
     if (workerInstance.sessionKey) {
-      console.log(`✅ API token retrieved`)
+      logger.info('ClientWorker', requestId, 'API token retrieved successfully', {
+        tokenLength: workerInstance.sessionKey.length
+      })
       return {
         success: true,
         token: workerInstance.sessionKey,
         message: 'API token retrieved successfully'
       }
     } else {
-      console.log(`🚫 No active session`)
+      logger.warn('ClientWorker', requestId, 'API token request failed - no active session', null)
       return {
         success: false,
         message: 'No active session - please login first'
@@ -238,12 +297,14 @@ class ClientHelper {
   
   // Method for session verification
   static async verifySession(workerInstance) {
-    console.log(`\n🔍 Verifying current session...`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    
+    logger.info('ClientWorker', requestId, 'Session verification initiated', null)
     
     try {
       // Check if we have a session key
       if (!workerInstance.sessionKey) {
-        console.log(`🚫 No session key found`)
+        logger.warn('ClientWorker', requestId, 'Session verification failed - no session key found', null)
         return {
           success: false,
           valid: false,
@@ -258,17 +319,42 @@ class ClientHelper {
         {}
       )
       
-      console.log(`🔍 Session verification result: ${result.valid ? 'VALID' : 'INVALID'}`)
+      logger.info('ClientWorker', requestId, 'Session verification completed', {
+        valid: result.valid,
+        message: result.message
+      })
       return result
       
     } catch (error) {
-      console.error(`❌ Session verification failed: ${error.message}`)
+      logger.error('ClientWorker', requestId, 'Session verification error', {
+        error: error.message,
+        stack: error.stack
+      })
       return {
         success: false,
         valid: false,
         message: 'Session verification failed'
       }
     }
+  }
+
+  // Method to detect stale DHT announcement errors
+  static isStaleAnnouncementError(error) {
+    if (!error || typeof error.message !== 'string') {
+      return false
+    }
+    
+    // Check for patterns that indicate stale DHT announcements
+    const stalePatterns = [
+      'connection reset',
+      'connection refused',
+      'timeout',
+      'no route to host',
+      'network unreachable'
+    ]
+    
+    const errorMessage = error.message.toLowerCase()
+    return stalePatterns.some(pattern => errorMessage.includes(pattern))
   }
 }
 

@@ -58,7 +58,11 @@ const ctx = {
   root: process.cwd()
 }
 
-console.log('🚀 Initializing Bridge Server...')
+logger.lifecycle('BridgeServer', 'INITIALIZING', {
+  port: port,
+  cors: 'enabled',
+  workerType: 'client-worker'
+})
 
 try {
   clientWorker = new ClientWorker(conf, ctx)
@@ -66,16 +70,22 @@ try {
   // Start the worker
   clientWorker.start((err) => {
     if (err) {
-      console.error('❌ Failed to start Client Worker:', err)
+      logger.error('BridgeServer', 'STARTUP', 'Failed to start Client Worker', {
+        error: err.message,
+        stack: err.stack
+      })
       process.exit(1)
     }
     
     isWorkerReady = true
-    console.log('✅ Client Worker ready for bridge server')
+    logger.info('BridgeServer', 'STARTUP', 'Client Worker ready for bridge server', null)
   })
   
 } catch (error) {
-  console.error('❌ Failed to create Client Worker:', error.message)
+  logger.error('BridgeServer', 'STARTUP', 'Failed to create Client Worker', {
+    error: error.message,
+    stack: error.stack
+  })
   process.exit(1)
 }
 
@@ -100,16 +110,29 @@ app.post('/register', async (req, res) => {
       })
     }
     
-    console.log(`🌐 Bridge server registering user: "${email}"`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    logger.info('BridgeServer', requestId, 'Registration request received', {
+      email: email,
+      endpoint: '/register'
+    })
     
     try {
       const result = await clientWorker.registerUser(email, password)
+      
+      logger.info('BridgeServer', requestId, 'Registration request completed', {
+        success: result.success,
+        status: result.status
+      })
       
       // Return the response
       res.status(result.status || 200).json(result)
       
     } catch (error) {
-      console.error(`❌ Bridge server registration error:`, error.message)
+      logger.error('BridgeServer', requestId, 'Registration request failed', {
+        email: email,
+        error: error.message,
+        stack: error.stack
+      })
       res.status(500).json({
         success: false,
         error: 'Registration failed',
@@ -118,7 +141,11 @@ app.post('/register', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('❌ Bridge server error:', error.message)
+    logger.error('BridgeServer', 'GENERAL', 'Unexpected server error in registration endpoint', {
+      error: error.message,
+      stack: error.stack,
+      endpoint: '/register'
+    })
     res.status(500).json({
       error: 'Internal server error',
       message: error.message
@@ -147,16 +174,26 @@ app.post('/login', async (req, res) => {
       })
     }
     
-    console.log(`🌐 Bridge server logging in user: "${email}"`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    logger.info('BridgeServer', requestId, 'Login request received', {
+      email: email,
+      endpoint: '/login'
+    })
     
     try {
       const result = await clientWorker.loginUser(email, password)
       
+      logger.info('BridgeServer', requestId, 'Login request completed', {
+        success: result.success,
+        status: result.status,
+        hasKey: !!result.key
+      })
+      
       // Return the response
       res.status(result.status || 200).json(result)
       
-          } catch (error) {
-      logger.error('BridgeServer', 'LOGIN', 'Login error', {
+    } catch (error) {
+      logger.error('BridgeServer', requestId, 'Login request failed', {
         error: error.message,
         stack: error.stack,
         email: email || 'unknown'
@@ -169,7 +206,11 @@ app.post('/login', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('❌ Bridge server error:', error.message)
+    logger.error('BridgeServer', 'GENERAL', 'Unexpected server error in registration endpoint', {
+      error: error.message,
+      stack: error.stack,
+      endpoint: '/register'
+    })
     res.status(500).json({
       error: 'Internal server error',
       message: error.message
@@ -188,16 +229,27 @@ app.post('/verify-session', async (req, res) => {
       })
     }
     
-    console.log(`🌐 Bridge server verifying session...`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    logger.info('BridgeServer', requestId, 'Session verification request received', {
+      endpoint: '/verify-session'
+    })
     
     try {
       const result = await clientWorker.verifySession()
+      
+      logger.info('BridgeServer', requestId, 'Session verification completed', {
+        valid: result.valid,
+        success: result.success
+      })
       
       // Return the response
       res.status(result.status || 200).json(result)
       
     } catch (error) {
-      console.error(`❌ Bridge server session verification error:`, error.message)
+      logger.error('BridgeServer', requestId, 'Session verification failed', {
+        error: error.message,
+        stack: error.stack
+      })
       res.status(500).json({
         success: false,
         valid: false,
@@ -206,7 +258,11 @@ app.post('/verify-session', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('❌ Bridge server error:', error.message)
+    logger.error('BridgeServer', 'GENERAL', 'Unexpected server error in registration endpoint', {
+      error: error.message,
+      stack: error.stack,
+      endpoint: '/register'
+    })
     res.status(500).json({
       error: 'Internal server error',
       message: error.message
@@ -225,16 +281,27 @@ app.post('/get-api-token', async (req, res) => {
       })
     }
     
-    console.log(`🌐 Bridge server retrieving API token...`)
+    const requestId = Math.random().toString(36).substr(2, 9)
+    logger.debug('BridgeServer', requestId, 'API token request received', {
+      endpoint: '/get-api-token'
+    })
     
     try {
       const result = clientWorker.getApiToken()
+      
+      logger.info('BridgeServer', requestId, 'API token request completed', {
+        success: result.success,
+        hasToken: !!result.token
+      })
       
       // Return the response
       res.status(result.success ? 200 : 401).json(result)
       
     } catch (error) {
-      console.error(`❌ Bridge server API token error:`, error.message)
+      logger.error('BridgeServer', requestId, 'API token request failed', {
+        error: error.message,
+        stack: error.stack
+      })
       res.status(500).json({
         success: false,
         message: 'Failed to retrieve API token'
@@ -242,7 +309,11 @@ app.post('/get-api-token', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('❌ Bridge server error:', error.message)
+    logger.error('BridgeServer', 'GENERAL', 'Unexpected server error in registration endpoint', {
+      error: error.message,
+      stack: error.stack,
+      endpoint: '/register'
+    })
     res.status(500).json({
       error: 'Internal server error',
       message: error.message
@@ -279,8 +350,6 @@ app.post('/inference', async (req, res) => {
       })
     }
     
-    console.log(`🌐 Bridge server forwarding authenticated request: "${prompt}"`)
-    
     // Generate request ID for tracking
     const requestId = Math.random().toString(36).substr(2, 9)
     
@@ -294,16 +363,12 @@ app.post('/inference', async (req, res) => {
     })
     
     try {
-      console.log(`🔄 Bridge server: Starting authenticated request with retries handled by ClientWorker...`)
-      
       // ClientWorker.sendRequest() already handles all retries internally
       // We just wait for the final result (success or failure after all retries)
       const result = await clientWorker.sendRequest(prompt)
       
       // Check if the final result is an error object from the backend
       if (result && result.error) {
-        console.log(`❌ Bridge server: Final result after retries is an error`)
-        
         // Log error response
         logger.prompt('BridgeServer', requestId, 'REQUEST_FAILED', {
           status: 'error',
@@ -319,8 +384,6 @@ app.post('/inference', async (req, res) => {
         })
       }
       
-      console.log(`✅ Bridge server: Request successful after retries`)
-      
       // Log successful response
       logger.prompt('BridgeServer', requestId, 'REQUEST_COMPLETED', {
         status: 'success',
@@ -334,17 +397,15 @@ app.post('/inference', async (req, res) => {
       
     } catch (error) {
       // This catch block only fires after ClientWorker has exhausted all retries
-      console.error(`❌ Bridge server: Final error after all retries exhausted:`, error.message)
-      
-      // Generate request ID for logging
-      const requestId = Math.random().toString(36).substr(2, 9)
+      // Generate new request ID for error logging
+      const errorRequestId = Math.random().toString(36).substr(2, 9)
       
       // Provide more specific error messages based on the error type
       let userMessage = 'Request failed after multiple attempts'
       
       if (error.message.includes('CHANNEL_CLOSED')) {
         userMessage = 'Connection was lost and could not be restored after multiple attempts. Please check if the backend services are running.'
-        logger.error('BridgeServer', requestId, 'Channel closed after all retries exhausted', {
+        logger.error('BridgeServer', errorRequestId, 'Channel closed after all retries exhausted', {
           endpoint: '/inference',
           error: error.message,
           retryCount: 'exhausted',
@@ -352,28 +413,28 @@ app.post('/inference', async (req, res) => {
         })
       } else if (error.message.includes('ERR_TOPIC_LOOKUP_EMPTY')) {
         userMessage = 'Backend service is not available. Please ensure the gateway worker is running.'
-        logger.error('BridgeServer', requestId, 'Topic lookup empty after all retries', {
+        logger.error('BridgeServer', errorRequestId, 'Topic lookup empty after all retries', {
           endpoint: '/inference',
           error: error.message,
           retryCount: 'exhausted'
         })
       } else if (error.message.includes('ECONNREFUSED')) {
         userMessage = 'Connection refused. Backend services may be offline.'
-        logger.error('BridgeServer', requestId, 'Connection refused after all retries', {
+        logger.error('BridgeServer', errorRequestId, 'Connection refused after all retries', {
           endpoint: '/inference',
           error: error.message,
           retryCount: 'exhausted'
         })
       } else if (error.message.includes('ETIMEDOUT')) {
         userMessage = 'Request timed out after multiple attempts.'
-        logger.error('BridgeServer', requestId, 'Request timeout after all retries', {
+        logger.error('BridgeServer', errorRequestId, 'Request timeout after all retries', {
           endpoint: '/inference',
           error: error.message,
           retryCount: 'exhausted'
         })
       } else {
         // Log any other unexpected errors
-        logger.error('BridgeServer', requestId, 'Unexpected error after all retries exhausted', {
+        logger.error('BridgeServer', errorRequestId, 'Unexpected error after all retries exhausted', {
           endpoint: '/inference',
           error: error.message,
           stack: error.stack,
@@ -388,7 +449,11 @@ app.post('/inference', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('❌ Bridge server error:', error.message)
+    logger.error('BridgeServer', 'GENERAL', 'Unexpected server error in registration endpoint', {
+      error: error.message,
+      stack: error.stack,
+      endpoint: '/register'
+    })
     res.status(500).json({
       error: 'Internal server error',
       message: error.message
@@ -424,21 +489,23 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   logger.lifecycle('BridgeServer', 'STARTED', {
     port: port,
-    endpoints: ['/inference', '/register', '/login', '/verify-session', '/get-api-token', '/health']
+    endpoints: ['/inference', '/register', '/login', '/verify-session', '/get-api-token', '/health'],
+    urls: {
+      register: `http://localhost:${port}/register`,
+      login: `http://localhost:${port}/login`,
+      verifySession: `http://localhost:${port}/verify-session`,
+      getApiToken: `http://localhost:${port}/get-api-token`,
+      inference: `http://localhost:${port}/inference`,
+      health: `http://localhost:${port}/health`
+    }
   })
   console.log(`🌐 Bridge server listening on port ${port}`)
-  console.log(`🔐 Auth endpoints:`)
-  console.log(`   POST http://localhost:${port}/register`)
-  console.log(`   POST http://localhost:${port}/login`)
-  console.log(`   POST http://localhost:${port}/verify-session`)
-  console.log(`   POST http://localhost:${port}/get-api-token`)
-  console.log(`📡 Inference endpoint: POST http://localhost:${port}/inference`)
-  console.log(`🏥 Health check: GET http://localhost:${port}/health`)
+  console.log(`📡 Endpoints: /register /login /verify-session /get-api-token /inference /health`)
 })
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down Bridge Server...')
+  logger.lifecycle('BridgeServer', 'SHUTDOWN', { signal: 'SIGINT' })
   if (clientWorker) {
     clientWorker.stop()
   }
@@ -446,7 +513,7 @@ process.on('SIGINT', () => {
 })
 
 process.on('SIGTERM', () => {
-  console.log('\n🛑 Shutting down Bridge Server...')
+  logger.lifecycle('BridgeServer', 'SHUTDOWN', { signal: 'SIGTERM' })
   if (clientWorker) {
     clientWorker.stop()
   }
