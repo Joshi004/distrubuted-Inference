@@ -10,18 +10,26 @@ class ProcessorHelper {
   // RPC method for processing AI requests
   static async processRequest(workerInstance, data) {
     const requestId = Math.random().toString(36).substr(2, 9)
-    console.log(`\n🔄 [${requestId}] Processor received processRequest:`)
-    console.log(`🔄 [${requestId}] Data:`, JSON.stringify(data, null, 2))
+    logger.rpc('ProcessorWorker', requestId, 'processRequest', 'RECEIVED', {
+      hasData: !!data,
+      dataType: typeof data
+    })
     
     try {
       // Validate input data
       if (!data || typeof data.prompt !== 'string') {
-        console.error(`❌ [${requestId}] Invalid input data:`, data)
+        logger.error('ProcessorWorker', requestId, 'Invalid input data', {
+          data: data,
+          validationError: 'Expected { prompt: string }'
+        })
         throw new Error('Invalid input: expected { prompt: string }')
       }
       
       const userPrompt = data.prompt
-      console.log(`🔄 [${requestId}] User prompt: "${userPrompt}"`)
+      logger.debug('ProcessorWorker', requestId, 'Processing user prompt', {
+        promptLength: userPrompt.length,
+        promptPreview: userPrompt.length > 50 ? userPrompt.substring(0, 50) + '...' : userPrompt
+      })
       
       // Log AI processing start
       logger.prompt('ProcessorWorker', requestId, 'AI_PROCESSING_START', {
@@ -31,7 +39,10 @@ class ProcessorHelper {
       })
       
       // Call Llama3 via Ollama with user's prompt
-      console.log(`🤖 [${requestId}] Sending prompt to Llama3...`)
+      logger.info('ProcessorWorker', requestId, 'Sending prompt to Llama3', {
+        model: 'llama3',
+        endpoint: 'http://localhost:11434/api/generate'
+      })
       
       // Add timeout and better error handling
       const controller = new AbortController()
@@ -65,7 +76,10 @@ class ProcessorHelper {
         }
         
         aiResponse = ollamaResult.response.trim()
-        console.log(`🤖 [${requestId}] Llama3 response received (${aiResponse.length} chars)`)
+        logger.info('ProcessorWorker', requestId, 'Llama3 response received', {
+          responseLength: aiResponse.length,
+          model: 'llama3'
+        })
       } catch (error) {
         clearTimeout(timeoutId)
         if (error.name === 'AbortError') {
@@ -83,8 +97,10 @@ class ProcessorHelper {
         requestId: requestId
       }
       
-      console.log(`✅ [${requestId}] Processing completed successfully`)
-      console.log(`📤 [${requestId}] Returning result to gateway`)
+      logger.info('ProcessorWorker', requestId, 'Processing completed successfully', {
+        responseLength: aiResponse.length,
+        promptLength: userPrompt.length
+      })
       
       // Log AI processing completion
       logger.prompt('ProcessorWorker', requestId, 'AI_PROCESSING_SUCCESS', {
@@ -97,10 +113,6 @@ class ProcessorHelper {
       return result
       
     } catch (error) {
-      console.error(`❌ [${requestId}] Error processing request:`, error.message)
-      console.error(`❌ [${requestId}] Error stack:`, error.stack)
-      
-      // Log to error.log with full context
       logger.error('ProcessorWorker', requestId, 'Error processing request', {
         method: 'processRequest',
         error: error.message,
