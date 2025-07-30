@@ -54,7 +54,6 @@ class GatewayWorker extends Base {
       ['fac', 'hp-svc-facs-net', 'net', 'default', {}, 10]
     ])
     
-    // Initialize simple metrics (always enabled, minimal overhead)
     this.metrics = new SimpleMetrics('gateway', 9100)
     
     console.log('🎯 =================================')
