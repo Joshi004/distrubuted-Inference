@@ -10,7 +10,7 @@
     "start:auth": "node auth_worker/auth-worker.js",
     "start:bridge": "node client_worker/bridge.server.js",
     "cleanup": "./cleanup.sh",
-    "test": "brittle tests/unit/**/*.test.js",
+    "test": "brittle tests/unit/helpers/*.test.js tests/unit/workers/**/*.test.js",
     "test:processor": "brittle tests/unit/workers/processor-worker.test.js",
     "test:helper": "brittle tests/unit/helpers/processor-helper.test.js",
     "dev": "echo \"Development mode - use npm run start:processor, npm run start:gateway, npm run start:auth, and npm run start:cli in separate terminals\""

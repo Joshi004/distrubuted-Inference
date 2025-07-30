@@ -27,48 +27,50 @@ The system follows a clear request flow from frontend to backend:
 
 ## 🎯 Application Structure
 
-```mermaid
-graph TD
-    %% Frontend Layer
-    UI[🌐 React Web UI]
-    CLI[💻 CLI Interface]
-    
-    %% Interface Layer  
-    BRIDGE[🌉 Bridge Server]
-    
-    %% Core Backend
-    CLIENT[👤 Client Worker]
-    GATEWAY[🚪 Gateway Worker]
-    AUTH[🔐 Auth Worker]
-    PROCESSOR[🤖 Processor Worker]
-    
-    %% External Services
-    OLLAMA[🧠 Ollama/Llama3]
-    
-    %% Main Request Flow
-    UI --> BRIDGE
-    CLI --> CLIENT
-    BRIDGE --> CLIENT
-    CLIENT --> GATEWAY
-    
-    %% Gateway Routing Decision
-    GATEWAY -->|Authentication| AUTH
-    GATEWAY -->|AI Inference| PROCESSOR
-    
-    %% AI Processing
-    PROCESSOR --> OLLAMA
-    
-    %% Styling for clarity
-    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    classDef interface fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef backend fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
-    classDef external fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    
-    class UI,CLI frontend
-    class BRIDGE interface
-    class CLIENT,GATEWAY,AUTH,PROCESSOR backend
-    class OLLAMA external
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                    FRONTEND LAYER                           │
+│                                                             │
+│  🌐 React Web UI              💻 CLI Interface              │
+│  (Material-UI)                 (Interactive Tool)           │
+└─────────────────┬─────────────────────┬─────────────────────┘
+                  │                     │
+                  ▼                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  INTERFACE LAYER                            │
+│                                                             │
+│           🌉 Bridge Server          👤 Client Worker        │
+│         (HTTP/WebSocket)           (Request Orchestration)  │
+└─────────────────────────────────────────┬───────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   CORE BACKEND                              │
+│                                                             │
+│                🚪 Gateway Worker                            │
+│            (Authentication & Routing)                      │
+│                        │                                   │
+│        ┌───────────────┼───────────────┐                   │
+│        ▼               │               ▼                   │
+│  🔐 Auth Worker        │        🤖 Processor Worker         │
+│ (User Management)      │       (AI Integration)            │
+│                        │               │                   │
+└────────────────────────┼───────────────┼───────────────────┘
+                         │               ▼
+                         │    ┌─────────────────────┐
+                         │    │   EXTERNAL LAYER    │
+                         │    │                     │
+                         │    │  🧠 Ollama/Llama3   │
+                         │    │   (AI Models)       │
+                         │    └─────────────────────┘
+                         │
+                    [Future: Other
+                     Workers/Services]
+```
+
+**Request Flow:**
+- **Authentication**: Web UI/CLI → Bridge → Client → Gateway → Auth Worker
+- **AI Inference**: Web UI/CLI → Bridge → Client → Gateway → Processor → Ollama
 
 ---
 
