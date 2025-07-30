@@ -6,16 +6,17 @@ console.log('🚀 Gateway Worker starting...')
 
 // Load dependencies with error handling
 try {
-  const Base = require('../bfx-wrk-base/base.js')
+  const Base = require('bfx-wrk-base')
   console.log('✅ Successfully loaded bfx-wrk-base')
 } catch (error) {
   console.error('❌ Failed to load bfx-wrk-base:', error.message)
   process.exit(1)
 }
 
-const Base = require('../bfx-wrk-base/base.js')
+const Base = require('../bfx-wrk-base')
 const GatewayHelper = require('./gateway-helper.js')
 const logger = require('../shared-logger.js')
+const SimpleMetrics = require('../simple-metrics.js')
 
 // Global error handlers for uncaught errors
 process.on('uncaughtException', (error) => {
@@ -52,6 +53,14 @@ class GatewayWorker extends Base {
       ['fac', 'hp-svc-facs-store', null, 's0', { storeDir: './data/gateway' }, 0],
       ['fac', 'hp-svc-facs-net', 'net', 'default', {}, 10]
     ])
+    
+    // Initialize simple metrics (always enabled, minimal overhead)
+    this.metrics = new SimpleMetrics('gateway', 9100)
+    
+    console.log('🎯 =================================')
+    console.log('📊 GATEWAY WORKER METRICS')
+    console.log('📈 URL: http://localhost:9100/metrics')
+    console.log('🎯 =================================')
     
     console.log('✅ Gateway Worker constructor completed')
   }
@@ -216,7 +225,13 @@ class GatewayWorker extends Base {
       })
       
       console.log('🎉 Gateway Worker ready to handle requests!')
-      cb()
+      console.log('')
+      console.log('🎯 ==========================================')
+      console.log('📊 METRICS: http://localhost:9100/metrics')
+      console.log('🎯 ==========================================')
+      
+      // Call parent's _start method
+      super._start(cb)
       
     } catch (error) {
       console.error('❌ Error starting Gateway Worker:', error)
@@ -235,24 +250,23 @@ class GatewayWorker extends Base {
   
   // RPC method called by clients - delegates to helper
   async processPrompt(data) {
-    return await GatewayHelper.processPrompt(this, data)
+    return await this.metrics.wrapRpcMethod('processPrompt', GatewayHelper.processPrompt, this, data)
   }
   
   // RPC method for user registration - delegates to helper
   async register(data) {
-    return await GatewayHelper.register(this, data)
+    return await this.metrics.wrapRpcMethod('register', GatewayHelper.register, this, data)
   }
   
   // RPC method for user login - delegates to helper
   async login(data) {
-    return await GatewayHelper.login(this, data)
+    return await this.metrics.wrapRpcMethod('login', GatewayHelper.login, this, data)
   }
   
   // RPC method for session verification - delegates to helper
   async verifySession(data) {
     try {
-      const result = await GatewayHelper.verifySession(this, data)
-      return result
+      return await this.metrics.wrapRpcMethod('verifySession', GatewayHelper.verifySession, this, data)
     } catch (error) {
       console.error('❌ GatewayWorker.verifySession() error:', error.message)
       throw error
@@ -262,6 +276,12 @@ class GatewayWorker extends Base {
   // Lifecycle method
   stop() {
     console.log('🛑 Gateway Worker stopping...')
+    
+    // Stop metrics server
+    if (this.metrics) {
+      this.metrics.stop()
+    }
+    
     super.stop()
     console.log('✅ Gateway Worker stopped')
   }

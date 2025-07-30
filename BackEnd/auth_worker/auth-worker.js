@@ -16,6 +16,7 @@ try {
 const Base = require('../bfx-wrk-base/base.js')
 const AuthHelper = require('./auth-helper.js')
 const logger = require('../shared-logger.js')
+const SimpleMetrics = require('../simple-metrics.js')
 
 // Global error handlers for uncaught errors
 process.on('uncaughtException', (error) => {
@@ -52,6 +53,14 @@ class AuthWorker extends Base {
       ['fac', 'hp-svc-facs-store', 'store', 's0', { storeDir: './data/auth' }, 0],
       ['fac', 'hp-svc-facs-net', 'net', 'default', {}, 10]
     ])
+    
+    // Initialize simple metrics
+    this.metrics = new SimpleMetrics('auth', 9101)
+    
+    console.log('🎯 =================================')
+    console.log('🔐 AUTH WORKER METRICS')
+    console.log('📈 URL: http://localhost:9101/metrics')
+    console.log('🎯 =================================')
     
     console.log('✅ Auth Worker constructor completed')
   }
@@ -142,14 +151,14 @@ class AuthWorker extends Base {
     }
   }
   
-  // RPC method for user registration - delegates to helper
+  // RPC method for user registration - delegates to helper (async, non-blocking)
   async register(data) {
-    return await AuthHelper.register(this, data)
+    return await this.metrics.wrapRpcMethod('register', AuthHelper.register, this, data)
   }
   
-  // RPC method for user login - delegates to helper
+  // RPC method for user login - delegates to helper (async, non-blocking)
   async login(data) {
-    return await AuthHelper.login(this, data)
+    return await this.metrics.wrapRpcMethod('login', AuthHelper.login, this, data)
   }
   
   // Lifecycle method
@@ -191,10 +200,14 @@ try {
       message: 'Auth Worker is now running and accepting requests',
       methods: ['register', 'login']
     })
-    console.log('🎉 Auth Worker is now running!')
-    console.log('🔍 Listening for:')
-    console.log('   • register requests: { email, password }')
-    console.log('   • login requests: { email, password }')
+          console.log('🎉 Auth Worker is now running!')
+      console.log('🔍 Listening for:')
+      console.log('   • register requests: { email, password }')
+      console.log('   • login requests: { email, password }')
+      console.log('')
+      console.log('🎯 ==========================================')
+      console.log('📊 METRICS: http://localhost:9101/metrics')
+      console.log('🎯 ==========================================')
   })
   
   // Graceful shutdown

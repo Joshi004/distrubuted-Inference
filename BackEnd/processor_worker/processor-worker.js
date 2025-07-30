@@ -22,6 +22,7 @@ try {
 const Base = require('../bfx-wrk-base/base.js')
 const ProcessorHelper = require('./processor-helper.js')
 const logger = require('../shared-logger.js')
+const SimpleMetrics = require('../simple-metrics.js')
 
 class ProcessorWorker extends Base {
   constructor(conf, ctx) {
@@ -40,6 +41,14 @@ class ProcessorWorker extends Base {
       ['fac', 'hp-svc-facs-store', null, 's0', { storeDir: './data/processor' }, 0],
       ['fac', 'hp-svc-facs-net', 'net', 'default', {}, 10]
     ])
+    
+    // Initialize simple metrics
+    this.metrics = new SimpleMetrics('processor', 9102)
+    
+    console.log('🎯 =================================')
+    console.log('🔄 PROCESSOR WORKER METRICS')
+    console.log('📈 URL: http://localhost:9102/metrics')
+    console.log('🎯 =================================')
     
     console.log('✅ Processor Worker constructor completed')
   }
@@ -190,9 +199,9 @@ class ProcessorWorker extends Base {
     }
   }
   
-  // RPC method called by gateway - delegates to helper
+  // RPC method called by gateway - delegates to helper (async, non-blocking)
   async processRequest(data) {
-    return await ProcessorHelper.processRequest(this, data)
+    return await this.metrics.wrapRpcMethod('processRequest', ProcessorHelper.processRequest, this, data)
   }
   
   // Lifecycle method
@@ -228,9 +237,13 @@ try {
       process.exit(1)
     }
     
-    console.log('🎉 Processor Worker is now running!')
-    console.log('🎯 Listening for "processor" topic requests')
-    console.log('💡 Send any prompt to the AI model for processing')
+          console.log('🎉 Processor Worker is now running!')
+      console.log('🎯 Listening for "processor" topic requests')
+      console.log('💡 Send any prompt to the AI model for processing')
+      console.log('')
+      console.log('🎯 ==========================================')
+      console.log('📊 METRICS: http://localhost:9102/metrics')
+      console.log('🎯 ==========================================')
   })
   
   // Graceful shutdown

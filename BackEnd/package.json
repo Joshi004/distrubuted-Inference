@@ -22,7 +22,8 @@
     "hp-svc-facs-net": "file:./hp-svc-facs-net",
     "hp-svc-facs-store": "file:./hp-svc-facs-store",
     "jsonwebtoken": "^9.0.2",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "prom-client": "^15.1.3"
   },
   "engines": {
     "node": ">=16.0"
