@@ -64,9 +64,9 @@ class ClientHelper {
           lookupServiceReady: !!workerInstance.net_default?.lookup
         })
         
-        // Try the request
+        // Try the request with robust method that tries all available keys
         const startTime = Date.now()
-        const result = await workerInstance.net_default.jTopicRequest(topic, method, requestPayload)
+        const result = await workerInstance.net_default.jTopicRequest(topic, method, requestPayload, {}, false)
         const duration = Date.now() - startTime
         
         // Log successful request
@@ -111,22 +111,42 @@ class ClientHelper {
         
         // Check if this is a retryable error
         const isRetryable = ClientHelper.isRetryableError(error)
+        const isStaleAnnouncementError = ClientHelper.isStaleAnnouncementError(error)
         
         if (isRetryable && !isLastAttempt) {
-          const delay = baseDelay * Math.pow(2, attempt - 1) // Exponential backoff
-          console.log(`⚠️  ${error.message.split(':')[0]} error on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`)
+          let delay = baseDelay * Math.pow(2, attempt - 1) // Exponential backoff
           
-          // Log retry attempts for CHANNEL_CLOSED and other significant errors
-          if (error.message.includes('CHANNEL_CLOSED') || error.message.includes('ERR_TOPIC_LOOKUP_EMPTY')) {
-            logger.warn('ClientWorker', `RETRY-${attempt}`, `Retrying after ${error.message.split(':')[0]} error`, {
+          // If this appears to be a stale announcement error, use shorter delays
+          if (isStaleAnnouncementError) {
+            delay = Math.min(delay, 1000) // Cap at 1 second for stale announcement retries
+            console.log(`⚠️  Possible stale service announcement detected on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`)
+            console.log('   Note: Using fresh DHT lookup to bypass stale announcements')
+            
+            logger.warn('ClientWorker', `STALE-RETRY-${attempt}`, `Retrying after possible stale announcement`, {
               method: method,
               topic: topic,
               attempt: attempt,
               maxRetries: maxRetries,
               delay: delay,
               error: error.message,
+              errorType: 'possible_stale_announcement',
               sessionId: sessionId
             })
+          } else {
+            console.log(`⚠️  ${error.message.split(':')[0]} error on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`)
+            
+            // Log retry attempts for CHANNEL_CLOSED and other significant errors
+            if (error.message.includes('CHANNEL_CLOSED') || error.message.includes('ERR_TOPIC_LOOKUP_EMPTY')) {
+              logger.warn('ClientWorker', `RETRY-${attempt}`, `Retrying after ${error.message.split(':')[0]} error`, {
+                method: method,
+                topic: topic,
+                attempt: attempt,
+                maxRetries: maxRetries,
+                delay: delay,
+                error: error.message,
+                sessionId: sessionId
+              })
+            }
           }
           
           // Wait before retry
@@ -140,15 +160,29 @@ class ClientHelper {
     }
     
     // If we get here, all retries failed
+    const isStaleError = ClientHelper.isStaleAnnouncementError(lastError)
+    
     logger.error('ClientWorker', sessionId, `All retry attempts exhausted for ${topic}.${method}`, {
       topic: topic,
       method: method,
       totalAttempts: maxRetries,
       finalError: lastError.message,
-      finalErrorStack: lastError.stack
+      finalErrorStack: lastError.stack,
+      possibleStaleAnnouncement: isStaleError
     })
     
     console.error(`❌ All ${maxRetries} attempts failed for ${topic}.${method}`)
+    
+    // Provide specific guidance for stale announcement failures
+    if (isStaleError && topic === 'gateway') {
+      console.error(`💡 This looks like a stale DHT announcement issue.`)
+      console.error(`   Suggested fixes:`)
+      console.error(`   1. Wait 5+ minutes for stale announcements to expire`)
+      console.error(`   2. Restart the gateway service`)
+      console.error(`   3. Run the cleanup script: ./cleanup.sh`)
+      console.error(`   4. Check if the gateway worker is actually running`)
+    }
+    
     throw lastError
   }
   
@@ -162,10 +196,29 @@ class ClientHelper {
       'ECONNREFUSED', 
       'ETIMEDOUT',
       'ENOTFOUND',
-      'ERR_TOPIC_LOOKUP_EMPTY'
+      'ERR_TOPIC_LOOKUP_EMPTY',
+      'UNKNOWN_METHOD',      // Service might be stale and not have the method
+      'Request timed out',   // Service might be unresponsive (stale)
+      'Connection refused'   // Service might be down (stale announcement)
     ]
     
     return retryableErrors.some(errorType => error.message.includes(errorType))
+  }
+  
+  // Check if an error likely indicates a stale DHT announcement
+  static isStaleAnnouncementError(error) {
+    if (!error || !error.message) return false
+    
+    const staleAnnouncementErrors = [
+      'CHANNEL_CLOSED',      // Service was announced but is no longer running
+      'ECONNREFUSED',        // Service was announced but port is not listening
+      'ETIMEDOUT',           // Service was announced but is unresponsive
+      'UNKNOWN_METHOD',      // Service was announced but doesn't have the expected method
+      'Connection refused',  // Service was announced but connection is refused
+      'Request timed out'    // Service was announced but times out
+    ]
+    
+    return staleAnnouncementErrors.some(errorType => error.message.includes(errorType))
   }
   
   // Sleep utility function
@@ -215,9 +268,16 @@ class ClientHelper {
         logger.error('ClientWorker', requestId, 'Channel closed - connection lost during request', {
           method: 'processPrompt',
           error: error.message,
-          hint: 'Network issues or service restarts'
+          hint: 'Network issues, service restarts, or stale DHT announcements'
         })
-        console.error(`💡 Hint: Connection was closed, this may indicate network issues or service restarts`)
+        console.error(`💡 Hint: Connection was closed, this may indicate network issues, service restarts, or stale DHT announcements`)
+      } else if (ClientHelper.isStaleAnnouncementError(error)) {
+        logger.error('ClientWorker', requestId, 'Possible stale DHT announcement detected', {
+          method: 'processPrompt',
+          error: error.message,
+          hint: 'Service may have been announced but is no longer reachable'
+        })
+        console.error(`💡 Hint: This may be a stale DHT announcement. Try waiting a few minutes or restart the gateway service`)
       } else {
         // Log any other unexpected errors
         logger.error('ClientWorker', requestId, 'Request failed with unexpected error', {

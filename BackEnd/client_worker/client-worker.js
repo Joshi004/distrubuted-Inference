@@ -48,6 +48,11 @@ class ClientWorker extends Base {
       this.net_default.startLookup()
       console.log('✅ Lookup service started')
       
+      console.log('')
+      console.log('🛡️  ROBUST DHT CONNECTION ENABLED')
+      console.log('   All requests try every available service key until one succeeds')
+      console.log('   This automatically handles stale announcements and service failures')
+      console.log('')
       console.log('🎉 Client Worker ready!')
       
       cb()
@@ -94,6 +99,8 @@ class ClientWorker extends Base {
   getApiToken() {
     return ClientHelper.getApiToken(this)
   }
+  
+
   
   stop() {
     console.log('🛑 Client Worker stopping...')

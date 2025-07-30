@@ -219,8 +219,22 @@ class AuthHelper {
             email: email,
             role: 'user'
           }
-          const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secret-key'
+          const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secure-secret-key-2025'
+          
+          // Enhanced debugging for JWT generation
+          logger.debug('AuthWorker', requestId, 'JWT Generation Debug', {
+            jwtSecretEnvVar: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+            secretPreview: jwtSecret.substring(0, 10) + '...',
+            payload: payload
+          })
+          
           const token = jwt.sign(payload, jwtSecret, { expiresIn: '24h' })
+          
+          logger.debug('AuthWorker', requestId, 'JWT Token Generated', {
+            tokenPreview: token.substring(0, 20) + '...',
+            tokenLength: token.length,
+            email: email
+          })
           
           logger.info('AuthWorker', requestId, 'User authenticated successfully', { email })
           logger.jwt('AuthWorker', requestId, 'Token Generated', {

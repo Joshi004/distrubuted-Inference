@@ -70,10 +70,17 @@ class AuthWorker extends Base {
     
     try {
       // Log JWT configuration
-      const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secret-key'
-      logger.jwt('AuthWorker', 'STARTUP', 'Secret Configured', {
+      const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secure-secret-key-2025'
+      logger.jwt('AuthWorker', 'STARTUP', 'JWT Secret Configured', {
         secretPreview: jwtSecret.substring(0, 10) + '...',
         isFromEnv: !!process.env.JWT_SECRET
+      })
+      
+      // Enhanced debugging for JWT secret consistency
+      logger.debug('AuthWorker', 'STARTUP', 'JWT Configuration Debug', {
+        jwtSecretEnvVar: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+        secretPreview: jwtSecret.substring(0, 10) + '...',
+        secretLength: jwtSecret.length
       })
       
       console.log('🔌 Starting RPC server...')
@@ -94,6 +101,13 @@ class AuthWorker extends Base {
       // Register RPC methods
       console.log('🔗 Registering RPC methods...')
       if (this.net_default.rpcServer && typeof this.net_default.rpcServer.respond === 'function') {
+        
+        // Register ping method for health checks
+        this.net_default.rpcServer.respond('ping', async () => {
+          console.log('🏓 Auth received ping health check')
+          return { status: 'healthy', timestamp: Date.now(), service: 'auth' }
+        })
+        console.log('✅ ping method registered successfully')
         
         // Register method
         this.net_default.rpcServer.respond('register', async (data) => {
@@ -139,7 +153,7 @@ class AuthWorker extends Base {
       
       logger.lifecycle('AuthWorker', 'STARTED', {
         topic: 'auth',
-        methods: ['register', 'login'],
+        methods: ['ping', 'register', 'login'],
         publicKey: this.net_default.rpc?.keyPair?.publicKey?.toString('hex')?.substring(0, 16) || 'N/A'
       })
       
@@ -161,11 +175,52 @@ class AuthWorker extends Base {
     return await this.metrics.wrapRpcMethod('login', AuthHelper.login, this, data)
   }
   
-  // Lifecycle method
-  stop() {
+  // Enhanced lifecycle method with proper DHT cleanup
+  async stop(cb) {
     console.log('🛑 Auth Worker stopping...')
-    super.stop()
-    console.log('✅ Auth Worker stopped')
+    
+    try {
+      // Log shutdown start
+      logger.info('AuthWorker', 'SHUTDOWN', 'Starting graceful shutdown', {
+        topic: 'auth',
+        announcementCleanup: true
+      })
+      
+      // Clean up DHT announcements before stopping
+      if (this.net_default && this.net_default.lookup) {
+        console.log('🧹 Cleaning up DHT announcements...')
+        await this.net_default.lookup.unnannounceInterval('auth')
+        console.log('✅ DHT announcements cleaned up')
+        
+        logger.info('AuthWorker', 'SHUTDOWN', 'DHT announcements cleaned', {
+          topic: 'auth',
+          cleanupSuccess: true
+        })
+      }
+      
+      // Call parent stop method
+      super.stop(() => {
+        console.log('✅ Auth Worker stopped')
+        logger.lifecycle('AuthWorker', 'STOPPED', {
+          topic: 'auth',
+          shutdownComplete: true
+        })
+        
+        if (cb) cb()
+      })
+      
+    } catch (error) {
+      console.error('❌ Error during auth shutdown:', error)
+      logger.error('AuthWorker', 'SHUTDOWN', 'Shutdown error', {
+        error: error.message,
+        stack: error.stack
+      })
+      
+      // Still call parent stop even if cleanup fails
+      super.stop(() => {
+        if (cb) cb(error)
+      })
+    }
   }
 }
 
@@ -198,10 +253,11 @@ try {
     
     logger.lifecycle('AuthWorker', 'FULLY_STARTED', {
       message: 'Auth Worker is now running and accepting requests',
-      methods: ['register', 'login']
+      methods: ['ping', 'register', 'login']
     })
           console.log('🎉 Auth Worker is now running!')
       console.log('🔍 Listening for:')
+      console.log('   • ping requests: health checks')
       console.log('   • register requests: { email, password }')
       console.log('   • login requests: { email, password }')
       console.log('')

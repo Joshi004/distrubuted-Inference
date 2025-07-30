@@ -49,7 +49,17 @@ class GatewayHelper {
     
     // Verify JWT token
     try {
-      const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secret-key'
+      const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secure-secret-key-2025'
+      
+      // Enhanced debugging for JWT verification
+      logger.debug('GatewayWorker', requestId, 'JWT Verification Debug', {
+        jwtSecretEnvVar: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+        secretPreview: jwtSecret.substring(0, 10) + '...',
+        tokenPreview: authKey.substring(0, 20) + '...',
+        tokenLength: authKey.length,
+        method: methodName
+      })
+      
       const decoded = jwt.verify(authKey, jwtSecret)
       
       logger.jwt('GatewayWorker', requestId, 'Token Verified', {
@@ -151,7 +161,9 @@ class GatewayHelper {
       const result = await workerInstance.net_default.jTopicRequest(
         'processor',
         'processRequest',
-        actualData
+        actualData,
+        {},
+        false  // Force fresh DHT lookup to avoid stale announcements
       )
       const processorDuration = Date.now() - processorStartTime
       
@@ -250,7 +262,9 @@ class GatewayHelper {
       const result = await workerInstance.net_default.jTopicRequest(
         'auth',
         'register',
-        actualData
+        actualData,
+        {},
+        false  // Force fresh DHT lookup to avoid stale announcements
       )
       
       console.log(`✅ [${requestId}] Registration processed`)
@@ -298,7 +312,9 @@ class GatewayHelper {
       const result = await workerInstance.net_default.jTopicRequest(
         'auth',
         'login',
-        actualData
+        actualData,
+        {},
+        false  // Force fresh DHT lookup to avoid stale announcements
       )
       
       console.log(`✅ [${requestId}] Login processed`)
@@ -357,7 +373,7 @@ class GatewayHelper {
       
       // Try to verify the JWT token directly (we need to import jwt since it's already imported at top)
       try {
-        const decoded = jwt.verify(authKey, process.env.JWT_SECRET || 'distributed-ai-secret-key')
+        const decoded = jwt.verify(authKey, process.env.JWT_SECRET || 'distributed-ai-secure-secret-key-2025')
         console.log(`✅ [${requestId}] Session valid for user: ${decoded.email}`)
         
         // Get rate limit status for the verified user

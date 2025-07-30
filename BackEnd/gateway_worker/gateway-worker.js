@@ -70,7 +70,7 @@ class GatewayWorker extends Base {
     
     try {
       // Log JWT configuration
-      const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secret-key'
+      const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secure-secret-key-2025'
       logger.jwt('GatewayWorker', 'STARTUP', 'Secret Configured', {
         secretPreview: jwtSecret.substring(0, 10) + '...',
         isFromEnv: !!process.env.JWT_SECRET
@@ -108,7 +108,14 @@ class GatewayWorker extends Base {
       console.log('🔗 Registering RPC methods...')
       if (this.net_default.rpcServer && typeof this.net_default.rpcServer.respond === 'function') {
         // Register all gateway methods with enhanced logging
-        const methods = ['processPrompt', 'register', 'login', 'verifySession']
+        const methods = ['ping', 'processPrompt', 'register', 'login', 'verifySession']
+        
+        // Register ping method for health checks
+        this.net_default.rpcServer.respond('ping', async () => {
+          console.log('🏓 Gateway received ping health check')
+          return { status: 'healthy', timestamp: Date.now(), service: 'gateway' }
+        })
+        console.log('✅ ping method registered successfully')
         
         this.net_default.rpcServer.respond('processPrompt', async (data) => {
           return await this.net_default.handleReply('processPrompt', data)
@@ -173,7 +180,7 @@ class GatewayWorker extends Base {
         logger.info('GatewayWorker', 'STARTUP', 'Gateway worker fully initialized', {
           publicKeyPreview: publicKey.substring(0, 16) + '...',
           topic: 'gateway',
-          methods: ['processPrompt', 'register', 'login', 'verifySession'],
+          methods: ['ping', 'processPrompt', 'register', 'login', 'verifySession'],
           networkReady: true,
           announcementActive: true
         })
@@ -182,15 +189,14 @@ class GatewayWorker extends Base {
       // Test connectivity to dependent services
       console.log('🔍 Testing service discovery...')
       
-      // Test if we can discover the auth worker
+      // Check auth service availability
       try {
         const authKeys = await this.net_default.lookup.lookup('auth', false) // Force fresh lookup
-        logger.info('GatewayWorker', 'STARTUP', 'Auth service discovery test', {
+        logger.info('GatewayWorker', 'STARTUP', 'Auth service discovery', {
           authKeysFound: authKeys.length,
-          authKeys: authKeys.map(k => k.substring(0, 16) + '...'),
           discoverySuccess: authKeys.length > 0
         })
-        console.log(`🔍 Found ${authKeys.length} auth service(s)`)
+        console.log(`🔍 Found ${authKeys.length} auth service(s) - using fresh DHT lookups to avoid stale announcements`)
       } catch (error) {
         logger.warn('GatewayWorker', 'STARTUP', 'Auth service discovery failed', {
           error: error.message,
@@ -199,15 +205,14 @@ class GatewayWorker extends Base {
         console.log(`⚠️  Could not discover auth services: ${error.message}`)
       }
       
-      // Test if we can discover the processor worker
+      // Check processor service availability
       try {
         const processorKeys = await this.net_default.lookup.lookup('processor', false) // Force fresh lookup
-        logger.info('GatewayWorker', 'STARTUP', 'Processor service discovery test', {
+        logger.info('GatewayWorker', 'STARTUP', 'Processor service discovery', {
           processorKeysFound: processorKeys.length,
-          processorKeys: processorKeys.map(k => k.substring(0, 16) + '...'),
           discoverySuccess: processorKeys.length > 0
         })
-        console.log(`🔍 Found ${processorKeys.length} processor service(s)`)
+        console.log(`🔍 Found ${processorKeys.length} processor service(s) - using fresh DHT lookups to avoid stale announcements`)
       } catch (error) {
         logger.warn('GatewayWorker', 'STARTUP', 'Processor service discovery failed', {
           error: error.message,
@@ -219,7 +224,7 @@ class GatewayWorker extends Base {
       // Final startup success log
       logger.lifecycle('GatewayWorker', 'STARTED', {
         topic: 'gateway',
-        methods: ['processPrompt', 'register', 'login', 'verifySession'],
+        methods: ['ping', 'processPrompt', 'register', 'login', 'verifySession'],
         publicKey: this.net_default.rpc?._defaultKeyPair?.publicKey?.toString('hex')?.substring(0, 16) + '...' || 'N/A',
         startupDuration: 'completed'
       })
@@ -312,9 +317,10 @@ try {
       process.exit(1)
     }
     
-    console.log('🎉 Gateway Worker is now running!')
-    console.log('🎯 Listening for "gateway" topic requests')
-    console.log('💡 Send processPrompt requests to test functionality')
+          console.log('🎉 Gateway Worker is now running!')
+      console.log('🎯 Listening for "gateway" topic requests')
+      console.log('🔍 Available methods: ping, processPrompt, register, login, verifySession')
+      console.log('💡 Send processPrompt requests to test functionality')
   })
   
   // Graceful shutdown

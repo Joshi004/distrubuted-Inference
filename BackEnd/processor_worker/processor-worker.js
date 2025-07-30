@@ -88,6 +88,13 @@ class ProcessorWorker extends Base {
       // Register RPC methods using the correct API
       console.log('🔗 Registering RPC methods...')
       if (this.net_default.rpcServer && typeof this.net_default.rpcServer.respond === 'function') {
+        // Register ping method for health checks
+        this.net_default.rpcServer.respond('ping', async () => {
+          console.log('🏓 Processor received ping health check')
+          return { status: 'healthy', timestamp: Date.now(), service: 'processor' }
+        })
+        console.log('✅ ping method registered successfully')
+        
         this.net_default.rpcServer.respond('processRequest', async (data) => {
           const requestId = Math.random().toString(36).substr(2, 9)
           console.log(`📨 [${requestId}] Processor received processRequest RPC call`)
@@ -123,7 +130,7 @@ class ProcessorWorker extends Base {
         console.log('✅ processRequest method registered successfully')
         
         logger.info('ProcessorWorker', 'STARTUP', 'RPC methods registered', {
-          methodsRegistered: ['processRequest'],
+          methodsRegistered: ['ping', 'processRequest'],
           serverReady: true
         })
       } else {
@@ -167,7 +174,7 @@ class ProcessorWorker extends Base {
         logger.info('ProcessorWorker', 'STARTUP', 'Processor worker fully initialized', {
           publicKeyPreview: publicKey.substring(0, 16) + '...',
           topic: 'processor',
-          methods: ['processRequest'],
+          methods: ['ping', 'processRequest'],
           networkReady: true,
           announcementActive: true
         })
@@ -176,7 +183,7 @@ class ProcessorWorker extends Base {
       // Final startup success log
       logger.lifecycle('ProcessorWorker', 'STARTED', {
         topic: 'processor',
-        methods: ['processRequest'],
+        methods: ['ping', 'processRequest'],
         publicKey: this.net_default.rpc?._defaultKeyPair?.publicKey?.toString('hex')?.substring(0, 16) + '...' || 'N/A',
         startupDuration: 'completed'
       })
@@ -204,11 +211,52 @@ class ProcessorWorker extends Base {
     return await this.metrics.wrapRpcMethod('processRequest', ProcessorHelper.processRequest, this, data)
   }
   
-  // Lifecycle method
-  stop() {
+  // Enhanced lifecycle method with proper DHT cleanup
+  async stop(cb) {
     console.log('🛑 Processor Worker stopping...')
-    super.stop()
-    console.log('✅ Processor Worker stopped')
+    
+    try {
+      // Log shutdown start
+      logger.info('ProcessorWorker', 'SHUTDOWN', 'Starting graceful shutdown', {
+        topic: 'processor',
+        announcementCleanup: true
+      })
+      
+      // Clean up DHT announcements before stopping
+      if (this.net_default && this.net_default.lookup) {
+        console.log('🧹 Cleaning up DHT announcements...')
+        await this.net_default.lookup.unnannounceInterval('processor')
+        console.log('✅ DHT announcements cleaned up')
+        
+        logger.info('ProcessorWorker', 'SHUTDOWN', 'DHT announcements cleaned', {
+          topic: 'processor',
+          cleanupSuccess: true
+        })
+      }
+      
+      // Call parent stop method
+      super.stop(() => {
+        console.log('✅ Processor Worker stopped')
+        logger.lifecycle('ProcessorWorker', 'STOPPED', {
+          topic: 'processor',
+          shutdownComplete: true
+        })
+        
+        if (cb) cb()
+      })
+      
+    } catch (error) {
+      console.error('❌ Error during processor shutdown:', error)
+      logger.error('ProcessorWorker', 'SHUTDOWN', 'Shutdown error', {
+        error: error.message,
+        stack: error.stack
+      })
+      
+      // Still call parent stop even if cleanup fails
+      super.stop(() => {
+        if (cb) cb(error)
+      })
+    }
   }
 }
 
