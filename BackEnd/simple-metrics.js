@@ -3,9 +3,6 @@
 const client = require('prom-client')
 const express = require('express')
 
-/**
- * Bare minimum Prometheus metrics setup
- */
 class SimpleMetrics {
   constructor(workerName, port = 9100) {
     this.workerName = workerName
