@@ -1,220 +1,86 @@
-# 🚀 AI Inference Platform - P2P Assessment Project
+# Distributed AI Inference Backend
 
-> **Status**: 🚧 In Development (28% Complete) - [View Progress](PROJECT_PROGRESS.md)
+A peer-to-peer distributed AI inference platform built with Node.js that provides scalable AI processing through microservices architecture. The system uses Hyperswarm for P2P networking and integrates with Ollama/Llama3 for AI model inference.
 
-A **microservice-based AI inference platform** built on Hyperswarm RPC that provides AI capabilities as a service. This project demonstrates a complete P2P architecture for distributed AI inference with user management, rate limiting, and monitoring.
+## Overview
 
-## 📋 Assessment Overview
+This backend implements a distributed system where multiple worker services communicate over a P2P network to provide authenticated AI inference capabilities. The architecture separates concerns into specialized workers that handle authentication, request routing, and AI processing.
 
-This is an implementation of an **AI Inference Platform as a Service** with the following requirements:
-- ✅ **Microservice architecture** communicating over Hyperswarm RPC
-- ✅ **Base worker inheritance** from provided `bfx-wrk-base`
-- ⚠️ **API rate-limiting and usage tracking** (In Progress)
-- ❌ **Prometheus metrics collection** (Planned)
-- ❌ **Web interface for user management** (Planned)
-- ❌ **Unit tests** (Planned)
-- ❌ **Comprehensive documentation** (In Progress) x
+## Core Components
 
-**📊 Current Progress: 12/43 features complete (28%)**
+- **AuthWorker** - User authentication and JWT token management
+- **GatewayWorker** - Request routing, rate limiting, and security enforcement  
+- **ProcessorWorker** - AI inference engine using Ollama/Llama3 integration
+- **ClientWorker** - Client-side interfaces (CLI, HTTP bridge, programmatic API)
 
-## 🏗️ Current Architecture (Working)
+## Quick Start
 
-```
-[Client Worker] ──RPC──► [Gateway Worker] ──RPC──► [Processor Worker]
-      ↑                        ↑                         ↑
-   • CLI Interface        • Request routing          • AI Integration
-   • User input          • Basic validation         • Ollama/Llama3
-   • Response display    • Error handling           • Prompt processing
-```
-
-## 🎯 Target Architecture (Assessment Goal)
-
-```
-[Web UI] ─────┐    ┌─► [Auth Service] ◄─── [Database]
-              │    │         ↓
-[CLI Tool] ───┼────┤    [Gateway Service] ──► [Metrics Service]
-              │    │         ↓                      ↓
-              └────► [Enhanced Routing] ──► [Inference Service(s)]
-                              ↓                      ↓
-                         [Rate Limiting]        [AI Backends]
-```
-
-## 🚀 Quick Start (Current System)
-
-### Prerequisites
-- Node.js 18+ (for fetch support)
-- [Ollama](https://ollama.ai/) installed locally
-- Llama3 model: `ollama pull llama3`
-
-### Installation
 ```bash
-git clone <repository>
-cd ai-inference-platform
+# Install dependencies
 npm install
+
+# Start all services (requires separate terminals)
+npm run start:auth       # Authentication service
+npm run start:gateway    # Gateway service  
+npm run start:processor  # AI processing service
+npm run start:bridge     # HTTP API bridge
+# or
+npm run start:cli        # Interactive CLI client
+
+# Run tests
+npm test
+
+# Cleanup processes
+npm run cleanup
 ```
 
-### Running the System
-```bash
-# Terminal 1: Start the AI processor
-npm run start:processor
+## API Interfaces
 
-# Terminal 2: Start the gateway service  
-npm run start:gateway
+- **HTTP REST API**: `POST /inference` on port 3000 (via bridge server)
+- **Interactive CLI**: Command-line interface for direct interaction
+- **P2P RPC**: Direct peer-to-peer communication between services
+- **Programmatic API**: ClientWorker class for integration
 
-# Terminal 3: Start the client interface
-npm run start:client
-```
+## Documentation
 
-### Usage
-Once all services are running:
-```
-🎉 Client Worker ready!
-💡 Type any prompt and press Enter to send it to the AI model
-💡 Type "exit" to quit
+### Worker API Guides
+- [AuthWorker API Guide](auth_worker/auth-worker-api-guide.md) - Authentication and user management
+- [GatewayWorker API Guide](gateway_worker/gateway-worker-api-guide.md) - Request routing and security
+- [ProcessorWorker API Guide](processor_worker/processor-worker-api-guide.md) - AI inference processing
+- [ClientWorker API Guide](client_worker/client-worker-api-guide.md) - Client interfaces and session management
 
-> Write a haiku about technology
-📤 Sending prompt: "Write a haiku about technology"
-✅ AI Response:
-Silicon dreams flow
-Through circuits of endless light
-Future awakens
-```
+### Worker Documentation
+- [AuthWorker README](auth_worker/README.md) - Authentication service setup and usage
+- [ClientWorker README](client_worker/README.md) - Client interfaces and bridge server
 
-## 📁 Project Structure
+### Infrastructure Guides
+- [Logging System Guide](docs/logging-system-guide.md) - Dual logging architecture and monitoring
+- [Prometheus Metrics Guide](docs/prometheus-metrics-guide.md) - Performance monitoring and metrics
+- [Worker Management Guide](docs/worker-management-guide.md) - Process management and deployment
+- [Test Infrastructure Guide](docs/test-infrastructure-guide.md) - Testing framework and practices
 
-```
-ai-inference-platform/
-├── workers/                    # Current working services
-│   ├── client-worker.js       # ✅ CLI interface
-│   ├── gateway-worker.js      # ✅ Request routing
-│   └── processor-worker.js    # ✅ AI integration
-├── bfx-wrk-base/              # ✅ Base worker class
-├── hp-svc-facs-net/           # ✅ Hyperswarm RPC facility
-├── hp-svc-facs-store/         # ✅ Storage facility
-├── config/facs/               # ✅ Service configurations
-├── docs/                      # 📝 Documentation (new)
-│   └── system-design.md       # 📋 Complete system design
-├── PROJECT_PROGRESS.md        # 📊 Progress tracking
-└── README.md                  # 📖 This file
-```
+## Architecture
 
-## 🎯 Next Development Phases
+The system uses a microservices architecture with P2P communication:
 
-### Phase 1: Foundation (Week 1-2)
-- [ ] **System Design Document** ✅ (Complete)
-- [ ] **User Management System** - Registration, login, database
-- [ ] **API Key Generation** - Secure key creation and storage
+1. **Client** submits requests via HTTP/CLI → **ClientWorker**
+2. **ClientWorker** routes authenticated requests → **GatewayWorker** 
+3. **GatewayWorker** enforces security/rate limits → **ProcessorWorker**
+4. **ProcessorWorker** processes via Ollama → returns AI response
 
-### Phase 2: Core Platform (Week 3-4) 
-- [ ] **Authentication Service** - API key validation
-- [ ] **Rate Limiting** - Request throttling per user
-- [ ] **Usage Tracking** - Request counting and persistence
+## Dependencies
 
-### Phase 3: User Interface (Week 5)
-- [ ] **Web Dashboard** - User registration and management
-- [ ] **API Key Management** - Web interface for keys
-- [ ] **Usage Analytics** - Dashboard for usage stats
+- **Runtime**: Node.js with Hyperswarm P2P networking
+- **AI Engine**: Ollama with Llama3 model (external service)
+- **Authentication**: bcrypt + JWT tokens
+- **Testing**: Brittle framework with Sinon mocking
+- **Monitoring**: Prometheus metrics + structured logging
 
-### Phase 4: Monitoring (Week 6-7)
-- [ ] **Prometheus Metrics** - System monitoring
-- [ ] **Testing Suite** - Unit and integration tests
-- [ ] **Documentation** - API docs and deployment guide
+## Security Features
 
-## 🔧 Development Commands
+- JWT-based authentication with 24-hour token expiration
+- Rate limiting (10 requests/minute per user)
+- Input validation and error handling
+- Secure password hashing with bcrypt
 
-```bash
-# Start individual services
-npm run start:client      # Interactive CLI client
-npm run start:gateway     # Request routing service  
-npm run start:processor   # AI inference service
 
-# Development utilities
-npm run cleanup          # Clean up data directories
-npm test                # Run test suite (when implemented)
-```
-
-## 📊 Assessment Requirements Checklist
-
-### ✅ **COMPLETE** (28%)
-- [x] Microservice-based architecture
-- [x] Hyperswarm RPC communication
-- [x] Base worker inheritance
-- [x] Basic AI inference integration
-- [x] Working CLI interface
-- [x] Service discovery via DHT
-
-### ⚠️ **IN PROGRESS** (25%)
-- [ ] System design document (✅ Complete)
-- [ ] Enhanced CLI with authentication
-- [ ] Basic error handling improvements
-- [ ] Project documentation
-
-### ❌ **TODO** (47%)
-- [ ] User registration system
-- [ ] API key authentication  
-- [ ] Rate limiting & usage tracking
-- [ ] Prometheus metrics collection
-- [ ] Web interface for user management
-- [ ] Unit tests for all components
-- [ ] API documentation
-- [ ] Deployment guide
-
-## 🏆 Success Metrics
-
-### Technical Goals
-- **Performance**: < 5 second average response time
-- **Scalability**: Support 100+ concurrent users
-- **Reliability**: 99% uptime with proper error handling
-- **Security**: Secure API key authentication
-
-### Assessment Goals
-- **Architecture**: Demonstrate microservice design principles
-- **P2P Integration**: Show effective use of Hyperswarm RPC
-- **Production Ready**: Include monitoring, testing, documentation
-- **User Experience**: Complete registration → usage → monitoring flow
-
-## 🔍 Monitoring & Debugging
-
-### Current Logging
-All services use emoji-based logging for easy debugging:
-- 🚀 Service startup
-- ✅ Successful operations  
-- ❌ Errors and failures
-- 🔄 Request processing
-- 🤖 AI model interactions
-
-### Debug Mode
-Set `DEBUG=1` environment variable for verbose logging:
-```bash
-DEBUG=1 npm run start:processor
-```
-
-## 🤝 Contributing
-
-This is an assessment project, but the architecture is designed for:
-- **Modularity**: Easy to add new services
-- **Extensibility**: Support for multiple AI backends
-- **Scalability**: Distributed across multiple nodes
-- **Maintainability**: Clear separation of concerns
-
-## 📚 Documentation
-
-- [📋 Progress Tracking](PROJECT_PROGRESS.md) - What's done vs TODO
-- [📐 System Design](docs/system-design.md) - Complete architecture overview
-- [📖 API Documentation](docs/api-documentation.md) - Coming soon
-- [⚡ Quick Start Guide](docs/quickstart.md) - Coming soon
-
-## 🎉 Current Demo
-
-The system currently demonstrates:
-1. **P2P Service Discovery** - Services find each other via DHT
-2. **RPC Communication** - JSON-based method calls between services
-3. **AI Integration** - Real Llama3 responses via Ollama
-4. **Interactive CLI** - User-friendly command-line interface
-5. **Error Handling** - Graceful failure management
-
-**Try it now**: Follow the Quick Start guide above!
-
----
-
-*This project showcases a production-ready approach to building distributed AI inference platforms using modern P2P technologies.* 
