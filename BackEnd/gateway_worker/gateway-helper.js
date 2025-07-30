@@ -28,13 +28,19 @@ class GatewayHelper {
     
     // Skip validation for authentication methods
     if (exemptMethods.includes(methodName)) {
-      console.log(`🔓 [${requestId}] ${methodName} is exempt from auth validation`)
+      logger.debug('GatewayWorker', requestId, 'Auth validation skipped for exempt method', {
+        method: methodName,
+        exempt: true
+      })
       return { isValid: true, skipAuth: true }
     }
     
     // Check if auth key is present for protected methods
     if (!authKey) {
-      console.log(`🚫 [${requestId}] No auth token found for protected method: ${methodName}`)
+      logger.warn('GatewayWorker', requestId, 'No auth token found for protected method', {
+        method: methodName,
+        authRequired: true
+      })
       return { 
         isValid: false, 
         skipAuth: false,
@@ -94,7 +100,9 @@ class GatewayHelper {
   // RPC method called by clients for AI processing
   static async processPrompt(workerInstance, data) {
     const requestId = Math.random().toString(36).substr(2, 9)
-    console.log(`📨 [${requestId}] Processing AI prompt...`)
+    logger.info('GatewayWorker', requestId, 'Processing AI prompt request', {
+      method: 'processPrompt'
+    })
     
     try {
       // Extract actual data and auth info
@@ -103,8 +111,6 @@ class GatewayHelper {
       // Validate authentication for protected methods
       const authValidation = await GatewayHelper.validateAuthKey(authKey, 'processPrompt', requestId)
       if (!authValidation.isValid) {
-        console.log(`🚫 [${requestId}] Authentication failed for processPrompt`)
-        
         // Log authentication failure
         logger.prompt('GatewayWorker', requestId, 'AUTH_FAILED', {
           error: 'Authentication failed',
@@ -126,7 +132,10 @@ class GatewayHelper {
       if (!authValidation.skipAuth && authValidation.decoded?.email) {
         const rlResult = await RateLimiter.checkRateLimit(workerInstance, authValidation.decoded.email)
         if (!rlResult.allowed) {
-          console.log(`🚫 [${requestId}] Rate limit exceeded for ${authValidation.decoded.email}`)
+          logger.warn('GatewayWorker', requestId, 'Rate limit exceeded', {
+            user: authValidation.decoded.email,
+            method: 'processPrompt'
+          })
           // Remove internal flag before sending to client
           const { allowed, ...clientError } = rlResult
           return clientError
@@ -137,11 +146,17 @@ class GatewayHelper {
       
       // Validate input data
       if (!actualData || typeof actualData.prompt !== 'string') {
-        console.error(`❌ [${requestId}] Invalid input data`)
+        logger.error('GatewayWorker', requestId, 'Invalid input data for processPrompt', {
+          method: 'processPrompt',
+          hasActualData: !!actualData,
+          promptType: typeof actualData?.prompt
+        })
         throw new Error('Invalid input: expected { prompt: string }')
       }
       
-      console.log(`🔄 [${requestId}] Forwarding to processor...`)
+      logger.debug('GatewayWorker', requestId, 'Forwarding request to processor', {
+        promptLength: actualData.prompt.length
+      })
       
       // Log processor connection attempt with network diagnostics
       logger.info('GatewayWorker', requestId, 'Attempting processor connection', {
@@ -168,8 +183,6 @@ class GatewayHelper {
       )
       const processorDuration = Date.now() - processorStartTime
       
-      console.log(`✅ [${requestId}] Received response from processor in ${processorDuration}ms`)
-      
       // Log successful processor response
       logger.info('GatewayWorker', requestId, 'Processor connection successful', {
         processingDuration: `${processorDuration}ms`,
@@ -194,9 +207,6 @@ class GatewayHelper {
       return result
       
     } catch (error) {
-      console.error(`❌ [${requestId}] Error processing request:`, error.message)
-      console.error(`❌ [${requestId}] Error stack:`, error.stack)
-      
       // Enhanced error logging with network state diagnostics
       logger.error('GatewayWorker', requestId, 'Error processing prompt request', {
         method: 'processPrompt',
@@ -247,7 +257,9 @@ class GatewayHelper {
   // RPC method for user registration
   static async register(workerInstance, data) {
     const requestId = Math.random().toString(36).substr(2, 9)
-    console.log(`📝 [${requestId}] Processing registration...`)
+    logger.info('GatewayWorker', requestId, 'Processing registration request', {
+      method: 'register'
+    })
     
     try {
       // Extract actual data and auth info
@@ -257,7 +269,9 @@ class GatewayHelper {
       const authValidation = await GatewayHelper.validateAuthKey(authKey, 'register', requestId)
       // Note: Register is always exempt, so this will always pass but maintains consistency
       
-      console.log(`🔄 [${requestId}] Forwarding to auth worker...`)
+      logger.debug('GatewayWorker', requestId, 'Forwarding registration to auth worker', {
+        method: 'register'
+      })
       
       // Forward to auth worker using robust method to handle stale DHT connections
       const result = await workerInstance.net_default.jTopicRequestRobust(
@@ -269,13 +283,14 @@ class GatewayHelper {
         100 // baseDelay in ms
       )
       
-      console.log(`✅ [${requestId}] Registration processed`)
+      logger.info('GatewayWorker', requestId, 'Registration request completed', {
+        method: 'register',
+        success: !!result.success
+      })
       
       return result
       
     } catch (error) {
-      console.error(`❌ [${requestId}] Error processing register request:`, error.message)
-      console.error(`❌ [${requestId}] Error stack:`, error.stack)
       
       // Log to error.log with full context
       logger.error('GatewayWorker', requestId, 'Error processing register request', {
@@ -298,7 +313,9 @@ class GatewayHelper {
   // RPC method for user login
   static async login(workerInstance, data) {
     const requestId = Math.random().toString(36).substr(2, 9)
-    console.log(`🔐 [${requestId}] Processing login...`)
+    logger.info('GatewayWorker', requestId, 'Processing login request', {
+      method: 'login'
+    })
     
     try {
       // Extract actual data and auth info
@@ -308,7 +325,9 @@ class GatewayHelper {
       const authValidation = await GatewayHelper.validateAuthKey(authKey, 'login', requestId)
       // Note: Login is always exempt, so this will always pass but maintains consistency
       
-      console.log(`🔄 [${requestId}] Forwarding to auth worker...`)
+      logger.debug('GatewayWorker', requestId, 'Forwarding login to auth worker', {
+        method: 'login'
+      })
       
       // Forward to auth worker using robust method to handle stale DHT connections
       const result = await workerInstance.net_default.jTopicRequestRobust(
@@ -320,7 +339,10 @@ class GatewayHelper {
         100 // baseDelay in ms
       )
       
-      console.log(`✅ [${requestId}] Login processed`)
+      logger.info('GatewayWorker', requestId, 'Login request completed', {
+        method: 'login',
+        success: !!result.success
+      })
       
       // Add rate limit information for successful login
       if (result.success && result.email) {
@@ -333,9 +355,6 @@ class GatewayHelper {
       return result
       
     } catch (error) {
-      console.error(`❌ [${requestId}] Error processing login request:`, error.message)
-      console.error(`❌ [${requestId}] Error stack:`, error.stack)
-      
       // Log to error.log with full context
       logger.error('GatewayWorker', requestId, 'Error processing login request', {
         method: 'login',
@@ -357,7 +376,9 @@ class GatewayHelper {
   // RPC method for session verification
   static async verifySession(workerInstance, data) {
     const requestId = Math.random().toString(36).substr(2, 9)
-    console.log(`🔐 [${requestId}] Verifying session...`)
+    logger.info('GatewayWorker', requestId, 'Verifying session request', {
+      method: 'verifySession'
+    })
     
     try {
       // Extract actual data and auth info
@@ -365,7 +386,9 @@ class GatewayHelper {
       
       // For session verification, we need to check if token exists and try to validate it
       if (!authKey) {
-        console.log(`🚫 [${requestId}] No auth token provided for verification`)
+        logger.debug('GatewayWorker', requestId, 'No auth token provided for session verification', {
+          method: 'verifySession'
+        })
         return {
           success: false,
           status: 401,
@@ -377,7 +400,10 @@ class GatewayHelper {
       // Try to verify the JWT token directly (we need to import jwt since it's already imported at top)
       try {
         const decoded = jwt.verify(authKey, process.env.JWT_SECRET || 'distributed-ai-secure-secret-key-2025')
-        console.log(`✅ [${requestId}] Session valid for user: ${decoded.email}`)
+        logger.info('GatewayWorker', requestId, 'Session verification successful', {
+          method: 'verifySession',
+          user: decoded.email
+        })
         
         // Get rate limit status for the verified user
         const rateLimitStatus = await RateLimiter.getRateLimitStatus(workerInstance, decoded.email)
@@ -397,7 +423,10 @@ class GatewayHelper {
         
         return response
       } catch (jwtError) {
-        console.log(`🚫 [${requestId}] Invalid JWT token: ${jwtError.message}`)
+        logger.debug('GatewayWorker', requestId, 'JWT token validation failed', {
+          method: 'verifySession',
+          error: jwtError.message
+        })
         return {
           success: false,
           status: 401,
@@ -407,8 +436,6 @@ class GatewayHelper {
       }
       
     } catch (error) {
-      console.error(`❌ [${requestId}] Error processing verifySession request:`, error.message)
-      
       // Log to error.log with full context
       logger.error('GatewayWorker', requestId, 'Error processing verifySession request', {
         method: 'verifySession',

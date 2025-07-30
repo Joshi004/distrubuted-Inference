@@ -3,6 +3,8 @@
 // Load environment variables (if available)
 require('dotenv').config()
 
+const logger = require('../shared-logger.js')
+
 // Default configuration values
 const DEFAULT_MAX_REQUESTS = 10           // requests
 const DEFAULT_RESET_INTERVAL_MINUTE = 1   // minutes
@@ -146,7 +148,11 @@ class RateLimiter {
       }
     } catch (err) {
       // Fail-open on storage errors to avoid blocking legitimate traffic
-      console.error('⚠️  RateLimiter encountered an error – allowing request:', err)
+      logger.error('RateLimiter', 'RATE_LIMIT_ERROR', 'Rate limiter storage error - allowing request', {
+        error: err.message,
+        userEmail: userEmail,
+        failOpen: true
+      })
       return { allowed: true }
     }
   }
@@ -206,7 +212,11 @@ class RateLimiter {
       }
 
     } catch (err) {
-      console.error('⚠️  RateLimiter.getRateLimitStatus encountered an error:', err)
+      logger.error('RateLimiter', 'RATE_LIMIT_STATUS_ERROR', 'Rate limiter status retrieval error', {
+        error: err.message,
+        userEmail: userEmail,
+        operation: 'getRateLimitStatus'
+      })
       return null
     }
   }
