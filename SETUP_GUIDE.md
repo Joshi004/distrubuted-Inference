@@ -604,4 +604,3 @@ Your Distributed AI Inference Platform is now ready for use!
 
 - Check the `logs/` directory for detailed error information
 - Use the troubleshooting section above for common issues
-- Examine the [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) for system design

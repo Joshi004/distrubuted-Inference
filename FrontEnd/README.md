@@ -29,9 +29,16 @@ npm install
 npm start
 ```
 
-2. Open your browser and navigate to `http://localhost:3000` (or the port shown in your terminal)
+2. Open your browser and navigate to `http://localhost:4012` (or the port shown in your terminal)
 
 3. Make sure your inference API is running on `http://localhost:3000/inference`
+
+## Port Configuration
+
+The frontend now runs on **port 4012** by default. This is configured in the `package.json` file:
+```json
+"start": "PORT=4012 react-scripts start"
+```
 
 ## Usage
 
