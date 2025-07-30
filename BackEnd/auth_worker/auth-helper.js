@@ -48,8 +48,11 @@ class AuthHelper {
   
   // RPC method for user registration (simplified version without requestId)
   static async register(workerInstance, data) {
+    const requestId = Math.random().toString(36).substr(2, 9)
     console.log(`\n📝 Auth received register request`)
     console.log(`📝 Raw Data:`, JSON.stringify(data, null, 2))
+    
+    let email = null // Declare email outside try block for error handler access
     
     try {
       // Extract actual data from the request
@@ -57,7 +60,9 @@ class AuthHelper {
       console.log(`📝 Actual Data:`, JSON.stringify(actualData, null, 2))
       
       // Extract email and password from actual data
-      const { email, password } = actualData
+      const emailData = actualData.email
+      const password = actualData.password
+      email = emailData // Assign to the outer scope variable
       
       if (!email || !password) {
         throw new Error('Email and password are required')
@@ -174,13 +179,17 @@ class AuthHelper {
     console.log(`\n🔐 [${requestId}] Auth received login request:`)
     console.log(`🔐 [${requestId}] Raw Data:`, JSON.stringify(data, null, 2))
     
+    let email = null // Declare email outside try block for error handler access
+    
     try {
       // Extract actual data from the request
       const { actualData } = AuthHelper.extractRequestData(data)
       console.log(`🔐 [${requestId}] Actual Data:`, JSON.stringify(actualData, null, 2))
       
       // Extract email and password from actual data
-      const { email, password } = actualData
+      const emailData = actualData.email
+      const password = actualData.password
+      email = emailData // Assign to the outer scope variable
       
       if (!email || !password) {
         throw new Error('Email and password are required')

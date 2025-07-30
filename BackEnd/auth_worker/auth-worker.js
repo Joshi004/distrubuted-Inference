@@ -88,7 +88,8 @@ class AuthWorker extends Base {
       // Check if net facility is available
       if (!this.net_default) {
         console.error('❌ net_default facility not available')
-        return cb(new Error('net_default facility not available'))
+        if (cb) return cb(new Error('net_default facility not available'))
+        return
       }
       
       console.log('✅ net_default facility is available')
@@ -157,11 +158,11 @@ class AuthWorker extends Base {
         publicKey: this.net_default.rpc?.keyPair?.publicKey?.toString('hex')?.substring(0, 16) || 'N/A'
       })
       
-      cb()
+      if (cb) cb()
       
     } catch (error) {
       console.error('❌ Error starting Auth Worker:', error)
-      cb(error)
+      if (cb) cb(error)
     }
   }
   
@@ -224,21 +225,25 @@ class AuthWorker extends Base {
   }
 }
 
-// Create worker instance
-const conf = {
-  env: 'development',
-  root: process.cwd()
-}
+module.exports = AuthWorker
 
-const ctx = {
-  wtype: 'auth-worker',
-  env: 'dev',
-  root: process.cwd()
-}
+// Only run worker when this file is executed directly, not when required as a module
+if (require.main === module) {
+  // Create worker instance
+  const conf = {
+    env: 'development',
+    root: process.cwd()
+  }
 
-try {
-  console.log('🔧 Creating AuthWorker instance...')
-  const worker = new AuthWorker(conf, ctx)
+  const ctx = {
+    wtype: 'auth-worker',
+    env: 'dev',
+    root: process.cwd()
+  }
+
+  try {
+    console.log('🔧 Creating AuthWorker instance...')
+    const worker = new AuthWorker(conf, ctx)
   
   // Start the worker
   worker.start((err) => {
@@ -286,4 +291,5 @@ try {
   })
   console.error('❌ Failed to create Auth Worker:', error.message)
   process.exit(1)
+}
 } 
