@@ -24,12 +24,12 @@ const PromptForm = () => {
     e.preventDefault();
     
     if (!query.trim()) {
-      setError('Please enter a query');
+      setError('Please share something you\'d like to discuss');
       return;
     }
 
     if (!isAuthenticated) {
-      setError('Please login to use the AI interface');
+      setError('Please sign in to start your conversation with the AI assistant');
       return;
     }
 
@@ -72,7 +72,7 @@ const PromptForm = () => {
       }
     } catch (err) {
       // Handle axios errors
-      let errorMessage = 'Failed to get response from the model';
+      let errorMessage = 'I\'m having trouble connecting right now. Please try again in a moment.';
       
       if (err.response?.data) {
         if (typeof err.response.data === 'string') {
@@ -108,11 +108,11 @@ const PromptForm = () => {
               multiline
               rows={3}
               variant="outlined"
-              label="Enter your query"
+              label="What's on your mind?"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               disabled={loading}
-              placeholder="Ask me anything..."
+              placeholder="Share your thoughts, ask questions, or explore new ideas..."
             />
           </Box>
           
@@ -130,7 +130,7 @@ const PromptForm = () => {
               startIcon={loading ? <CircularProgress size={20} /> : <Send />}
               disabled={loading || !query.trim()}
             >
-              {loading ? 'Processing (may take a few seconds)...' : 'Send Query'}
+              {loading ? 'Thinking...' : 'Send Message'}
             </Button>
           </Box>
           
@@ -140,7 +140,7 @@ const PromptForm = () => {
               color="text.secondary" 
               sx={{ mt: 1, textAlign: 'center', fontStyle: 'italic' }}
             >
-              The system will automatically retry if there are connection issues...
+              Your AI assistant is carefully considering your message...
             </Typography>
           )}
         </form>
@@ -155,7 +155,7 @@ const PromptForm = () => {
       {response && (
         <Paper elevation={2} sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Response:
+            AI Assistant:
           </Typography>
           <Divider sx={{ mb: 2 }} />
           <Typography 
