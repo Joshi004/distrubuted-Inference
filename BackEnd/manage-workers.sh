@@ -215,6 +215,14 @@ EOF
     cat .env
     echo ""
     
+    # Create logs directory if it doesn't exist
+    if [ ! -d "logs" ]; then
+        echo -e "${YELLOW}📁 Creating logs directory...${NC}"
+        mkdir -p logs
+        echo -e "${GREEN}✅ Logs directory created${NC}"
+        echo ""
+    fi
+    
     case $1 in
         "auth")
             echo "🔐 Starting Auth Worker..."
