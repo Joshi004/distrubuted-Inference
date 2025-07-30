@@ -44,9 +44,9 @@ if [[ $result3 =~ tests\ =\ ([0-9]+)/([0-9]+)\ pass ]]; then
 fi
 echo ""
 
-# Batch 4: Processor Tests (folder version)
-echo "=== BATCH 4: Processor Tests (Folder) ==="
-result4=$(npx brittle tests/unit/workers/processor_worker/processor-helper.test.js tests/unit/workers/processor_worker/processor-worker.test.js 2>&1)
+# Batch 4: Client Worker Tests
+echo "=== BATCH 4: Client Worker Tests ==="
+result4=$(npx brittle tests/unit/workers/client_worker/client-worker.test.js 2>&1)
 batch4_exit=$?
 echo "$result4"
 if [[ $result4 =~ tests\ =\ ([0-9]+)/([0-9]+)\ pass ]]; then
@@ -55,9 +55,9 @@ if [[ $result4 =~ tests\ =\ ([0-9]+)/([0-9]+)\ pass ]]; then
 fi
 echo ""
 
-# Batch 5: Processor Test (root version, isolated)
-echo "=== BATCH 5: Processor Test (Root) ==="
-result5=$(npx brittle tests/unit/workers/processor-worker.test.js 2>&1)
+# Batch 5: Processor Tests (folder version)
+echo "=== BATCH 5: Processor Tests (Folder) ==="
+result5=$(npx brittle tests/unit/workers/processor_worker/processor-helper.test.js tests/unit/workers/processor_worker/processor-worker.test.js 2>&1)
 batch5_exit=$?
 echo "$result5"
 if [[ $result5 =~ tests\ =\ ([0-9]+)/([0-9]+)\ pass ]]; then
@@ -66,12 +66,23 @@ if [[ $result5 =~ tests\ =\ ([0-9]+)/([0-9]+)\ pass ]]; then
 fi
 echo ""
 
-# Batch 6: External Libraries
-echo "=== BATCH 6: External Libraries ==="
-result6=$(npx brittle hp-svc-facs-net/tests/hyperdht.lookup.test.js hp-svc-facs-store/tests/index.test.js hp-svc-facs-store/tests/compatiblity.test.js 2>&1)
+# Batch 6: Processor Test (root version, isolated)
+echo "=== BATCH 6: Processor Test (Root) ==="
+result6=$(npx brittle tests/unit/workers/processor-worker.test.js 2>&1)
 batch6_exit=$?
 echo "$result6"
 if [[ $result6 =~ tests\ =\ ([0-9]+)/([0-9]+)\ pass ]]; then
+  total_tests=$((total_tests + ${BASH_REMATCH[2]}))
+  total_passed=$((total_passed + ${BASH_REMATCH[1]}))
+fi
+echo ""
+
+# Batch 7: External Libraries
+echo "=== BATCH 7: External Libraries ==="
+result7=$(npx brittle hp-svc-facs-net/tests/hyperdht.lookup.test.js hp-svc-facs-store/tests/index.test.js hp-svc-facs-store/tests/compatiblity.test.js 2>&1)
+batch7_exit=$?
+echo "$result7"
+if [[ $result7 =~ tests\ =\ ([0-9]+)/([0-9]+)\ pass ]]; then
   total_tests=$((total_tests + ${BASH_REMATCH[2]}))
   total_passed=$((total_passed + ${BASH_REMATCH[1]}))
 fi
@@ -86,7 +97,7 @@ echo "All test files maintained and executed"
 echo ""
 
 # Exit with error if any batch failed
-if [ $batch1_exit -ne 0 ] || [ $batch2_exit -ne 0 ] || [ $batch3_exit -ne 0 ] || [ $batch4_exit -ne 0 ] || [ $batch5_exit -ne 0 ] || [ $batch6_exit -ne 0 ]; then
+if [ $batch1_exit -ne 0 ] || [ $batch2_exit -ne 0 ] || [ $batch3_exit -ne 0 ] || [ $batch4_exit -ne 0 ] || [ $batch5_exit -ne 0 ] || [ $batch6_exit -ne 0 ] || [ $batch7_exit -ne 0 ]; then
   echo "Some tests failed - check batches above"
   exit 1
 else
