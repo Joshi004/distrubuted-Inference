@@ -748,7 +748,7 @@ test('should start lookup service', async (t) => {
   const startLookupSpy = sinon.stub()
   worker.net_default = {
     startRpcServer: sinon.stub().resolves(),
-    rpcServer: null,
+    rpcServer: { respond: sinon.stub() },
     startLookup: startLookupSpy,
     lookup: { announceInterval: sinon.stub().resolves() }
   }
@@ -773,7 +773,7 @@ test('should announce auth service to DHT', async (t) => {
   const announceIntervalSpy = sinon.stub().resolves()
   worker.net_default = {
     startRpcServer: sinon.stub().resolves(),
-    rpcServer: null,
+    rpcServer: { respond: sinon.stub() },
     startLookup: sinon.stub(),
     lookup: { announceInterval: announceIntervalSpy }
   }
@@ -799,7 +799,7 @@ test('should handle DHT announcement failure', async (t) => {
   const testError = new Error('DHT announcement failed')
   worker.net_default = {
     startRpcServer: sinon.stub().resolves(),
-    rpcServer: null,
+    rpcServer: { respond: sinon.stub() },
     startLookup: sinon.stub(),
     lookup: { announceInterval: sinon.stub().rejects(testError) }
   }

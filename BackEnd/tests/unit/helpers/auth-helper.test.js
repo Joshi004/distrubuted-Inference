@@ -58,7 +58,9 @@ Module.prototype.require = function(id) {
       error: sinon.stub(),
       debug: sinon.stub(),
       lifecycle: sinon.stub(),
-      jwt: sinon.stub()
+      jwt: sinon.stub(),
+      rpc: sinon.stub(),
+      warn: sinon.stub()
     }
   }
   return originalRequire.apply(this, arguments)
@@ -74,10 +76,13 @@ const AuthHelper = require('../../../auth_worker/auth-helper.js')
 function resetAllMocks() {
   if (bcryptStub) {
     bcryptStub.hash.reset()
+    bcryptStub.hash.resolves('hashed_password') // Reconfigure after reset
     bcryptStub.compare.reset()
+    bcryptStub.compare.resolves(true) // Reconfigure after reset
   }
   if (jwtStub) {
     jwtStub.sign.reset()
+    jwtStub.sign.returns('jwt_token') // Reconfigure after reset
   }
   // Reset any sinon stubs on worker instances will be handled per test
 }
@@ -327,7 +332,7 @@ test('AuthHelper.register - should extract data using extractRequestData', async
   await AuthHelper.register(workerInstance, wrappedData)
   
   // Verify that the method processes the wrapped data correctly
-  t.is(mockDatabase.get.callCount, 1, 'Database get should be called')
+  t.is(mockDatabase.get.callCount, 2, 'Database get should be called twice (check existence + verify storage)')
   t.is(mockDatabase.get.firstCall.args[0], "test@example.com", 'Should use extracted email')
 })
 

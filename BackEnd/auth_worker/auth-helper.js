@@ -49,15 +49,11 @@ class AuthHelper {
   // RPC method for user registration (simplified version without requestId)
   static async register(workerInstance, data) {
     const requestId = Math.random().toString(36).substr(2, 9)
-    console.log(`\n📝 Auth received register request`)
-    console.log(`📝 Raw Data:`, JSON.stringify(data, null, 2))
-    
     let email = null // Declare email outside try block for error handler access
     
     try {
       // Extract actual data from the request
       const { actualData } = AuthHelper.extractRequestData(data)
-      console.log(`📝 Actual Data:`, JSON.stringify(actualData, null, 2))
       
       // Extract email and password from actual data
       const emailData = actualData.email
@@ -68,17 +64,16 @@ class AuthHelper {
         throw new Error('Email and password are required')
       }
       
+      logger.rpc('AuthWorker', requestId, 'register', 'RECEIVED', { email })
+      
       // Get the users database
       const usersDb = await AuthHelper.getUsersDatabase(workerInstance)
-      console.log(`📋 Connected to users database`)
       
       // Check if user already exists
-      console.log(`🔍 Checking if user exists: ${email}`)
       const existingUser = await usersDb.get(email)
       
       if (existingUser && existingUser.value) {
-        console.log(`❌ User already exists: ${email}`)
-        console.log(`🔍 Existing user data:`, JSON.stringify(existingUser.value, null, 2))
+        logger.info('AuthWorker', requestId, 'Registration failed - user already exists', { email })
         
         return {
           success: false,
@@ -87,12 +82,9 @@ class AuthHelper {
         }
       }
       
-      console.log(`✅ User does not exist, proceeding with registration`)
-      
       // Hash password
       const saltRounds = 10
       const passwordHash = await bcrypt.hash(password, saltRounds)
-      console.log(`🔒 Password hashed successfully`)
       
       // Store user in Hyperbee
       const userData = {
@@ -101,19 +93,15 @@ class AuthHelper {
         createdAt: new Date().toISOString()
       }
       
-      console.log(`💾 Storing user data:`, JSON.stringify({...userData, passwordHash: '[REDACTED]'}, null, 2))
       await usersDb.put(email, userData)
-      console.log(`💾 User stored in Hyperbee database`)
       
       // Verify the user was stored correctly
       const verifyUser = await usersDb.get(email)
-      if (verifyUser && verifyUser.value) {
-        console.log(`✅ User storage verified`)
-      } else {
-        console.log(`⚠️  Warning: Could not verify user storage`)
+      if (!verifyUser || !verifyUser.value) {
+        logger.warn('AuthWorker', requestId, 'User storage verification failed', { email })
       }
       
-      console.log(`✅ User registered successfully`)
+      logger.info('AuthWorker', requestId, 'User registered successfully', { email })
       
       // Return success response
       const response = {
@@ -123,12 +111,9 @@ class AuthHelper {
         email: email
       }
       
-      console.log(`📤 Returning response:`, JSON.stringify(response, null, 2))
       return response
       
     } catch (error) {
-      console.error(`❌ Error during registration:`, error.message)
-      console.error(`❌ Error stack:`, error.stack)
       
       // Generate request ID for logging (or use existing one if available)
       const errorRequestId = requestId || Math.random().toString(36).substr(2, 9)
@@ -176,15 +161,11 @@ class AuthHelper {
   // RPC method for user login
   static async login(workerInstance, data) {
     const requestId = Math.random().toString(36).substr(2, 9)
-    console.log(`\n🔐 [${requestId}] Auth received login request:`)
-    console.log(`🔐 [${requestId}] Raw Data:`, JSON.stringify(data, null, 2))
-    
     let email = null // Declare email outside try block for error handler access
     
     try {
       // Extract actual data from the request
       const { actualData } = AuthHelper.extractRequestData(data)
-      console.log(`🔐 [${requestId}] Actual Data:`, JSON.stringify(actualData, null, 2))
       
       // Extract email and password from actual data
       const emailData = actualData.email
@@ -195,21 +176,16 @@ class AuthHelper {
         throw new Error('Email and password are required')
       }
       
+      logger.rpc('AuthWorker', requestId, 'login', 'RECEIVED', { email })
+      
       // Get the users database
       const usersDb = await AuthHelper.getUsersDatabase(workerInstance)
-      console.log(`📋 [${requestId}] Connected to users database`)
       
       // Find user by email
       const userResult = await usersDb.get(email)
       
       if (userResult && userResult.value) {
         const userData = userResult.value
-        console.log(`📋 [${requestId}] User found in Hyperbee database`)
-        console.log(`🔍 [${requestId}] User data structure:`, JSON.stringify(userData, null, 2))
-        
-        // Debug the values before bcrypt.compare
-        console.log(`🔍 [${requestId}] Input password:`, password ? 'provided' : 'missing')
-        console.log(`🔍 [${requestId}] Stored hash:`, userData.passwordHash ? 'found' : 'missing')
         
         if (!password) {
           throw new Error('Password is required for login')
@@ -230,27 +206,12 @@ class AuthHelper {
           }
           const jwtSecret = process.env.JWT_SECRET || 'distributed-ai-secure-secret-key-2025'
           
-          // Enhanced debugging for JWT generation
-          logger.debug('AuthWorker', requestId, 'JWT Generation Debug', {
-            jwtSecretEnvVar: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
-            secretPreview: jwtSecret.substring(0, 10) + '...',
-            payload: payload
-          })
-          
           const token = jwt.sign(payload, jwtSecret, { expiresIn: '24h' })
-          
-          logger.debug('AuthWorker', requestId, 'JWT Token Generated', {
-            tokenPreview: token.substring(0, 20) + '...',
-            tokenLength: token.length,
-            email: email
-          })
           
           logger.info('AuthWorker', requestId, 'User authenticated successfully', { email })
           logger.jwt('AuthWorker', requestId, 'Token Generated', {
             email,
-            expiresIn: '24h',
-            secretPreview: jwtSecret.substring(0, 10) + '...',
-            tokenPreview: token.substring(0, 20) + '...'
+            expiresIn: '24h'
           })
           
           // Return success response
@@ -261,13 +222,12 @@ class AuthHelper {
             key: token
           }
           
-          console.log(`📤 [${requestId}] Returning response:`, JSON.stringify(response, null, 2))
           return response
         } else {
-          logger.error('AuthWorker', requestId, 'Invalid password', { email })
+          logger.info('AuthWorker', requestId, 'Login failed - invalid password', { email })
         }
       } else {
-        logger.error('AuthWorker', requestId, 'User not found', { email })
+        logger.info('AuthWorker', requestId, 'Login failed - user not found', { email })
       }
       
       // Return failure response for both invalid password and user not found
@@ -277,12 +237,9 @@ class AuthHelper {
         message: 'Invalid credentials'
       }
       
-      console.log(`📤 [${requestId}] Returning response:`, JSON.stringify(response, null, 2))
       return response
       
     } catch (error) {
-      console.error(`❌ [${requestId}] Error during login:`, error.message)
-      console.error(`❌ [${requestId}] Error stack:`, error.stack)
       
       // Handle specific error types
       let status = 500
