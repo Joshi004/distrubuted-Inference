@@ -1,25 +1,12 @@
 # 🤖 Distributed AI Inference Platform
 
-A peer-to-peer distributed AI inference system built with microservices architecture, providing scalable AI processing capabilities through secure authentication, intelligent routing, and real-time web interfaces.
+A P2P distributed AI inference system with microservices architecture. Users interact with AI models through web UI, CLI, or API interfaces backed by secure authentication and intelligent routing.
 
-## 🌟 Project Overview
+## 📋 Quick Reference Guide
 
-This platform enables users to interact with AI models through multiple interfaces (web UI, CLI, API) while leveraging a distributed P2P network for processing. The system separates concerns into specialized microservices that handle authentication, request routing, AI inference, and client interactions.
-
-**Key Features:**
-- 🔐 JWT-based authentication and user management
-- 🚀 P2P distributed processing with Hyperswarm networking
-- 🧠 AI inference integration with Ollama/Llama3
-- 🌐 Multiple client interfaces (React web UI, CLI, HTTP API)
-- 📊 Comprehensive monitoring and logging
-- ⚡ Rate limiting and security enforcement
-- 🔄 Robust error handling and retry mechanisms
-
-## 🏗️ Architecture
-
-The system uses a microservices architecture with the following components:
+This README serves as a navigation hub to all project documentation. The platform consists of:
 - **Frontend**: React web application with Material-UI
-- **Backend**: Four specialized worker services communicating over P2P network
+- **Backend**: Four P2P worker services (Auth, Gateway, Processor, Client)
 - **External**: Ollama AI service for model inference
 
 ## 📚 Complete Documentation Index
@@ -95,3 +82,7 @@ For detailed setup instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md).
 ## 🏆 License
 
 This project is part of the distributed AI inference platform ecosystem.
+
+## 📁 Project Structure Design
+
+We have made a deliberate design choice to keep both frontend and backend in the same repository for ease of cloning, sharing, and development. This monorepo approach simplifies setup and ensures version compatibility between all components.
