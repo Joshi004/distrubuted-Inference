@@ -128,7 +128,30 @@ class ProcessorHelper {
                   error.message.includes('timeout') ? 'TIMEOUT' : 'UNKNOWN'
       })
       
-      // Return error in a structured format
+      // Check if this is an Ollama connection issue and return a witty response instead of an error
+      const isOllamaConnectionIssue = error.message.includes('fetch failed') || 
+                                     error.message.includes('ECONNREFUSED') ||
+                                     error.message.includes('Cannot connect to Ollama')
+
+      if (isOllamaConnectionIssue) {
+        const wittyResponse = "🤖 Oops! Looks like my AI brain has taken a coffee break! ☕\n\n" +
+                             "It seems there's no LLM connected to chat with you right now. " +
+                             "I'm like a very expensive parrot without my AI friend - I can repeat things, but the magic happens when we're connected! 🦜✨\n\n" +
+                             "To wake up the AI and get back to having meaningful conversations:\n" +
+                             "Need detailed setup instructions? Check out our SETUP_GUIDE.md - it's got everything you need to get this digital brain purring again! 🧠🚀\n\n" +
+                             "Until then, I'll just be here... waiting... and dreaming of electric sheep. 🐑⚡"
+        
+        // Return as a normal response, not an error
+        return {
+          prompt: data.prompt,
+          response: wittyResponse,
+          processed_at: new Date().toISOString(),
+          requestId: requestId,
+          note: "LLM_UNAVAILABLE"
+        }
+      }
+      
+      // For other types of errors, return error format
       return {
         error: true,
         message: error.message,
