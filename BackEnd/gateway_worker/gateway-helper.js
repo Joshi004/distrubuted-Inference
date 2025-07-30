@@ -156,14 +156,15 @@ class GatewayHelper {
         promptLength: actualData.prompt ? actualData.prompt.length : 0
       })
       
-      // Forward to processor (using actualData, not the wrapped format)
+      // Forward to processor using robust method to handle stale DHT connections
       const processorStartTime = Date.now()
-      const result = await workerInstance.net_default.jTopicRequest(
+      const result = await workerInstance.net_default.jTopicRequestRobust(
         'processor',
         'processRequest',
         actualData,
-        {},
-        false  // Force fresh DHT lookup to avoid stale announcements
+        {}, // options
+        3,  // maxRetries
+        100 // baseDelay in ms
       )
       const processorDuration = Date.now() - processorStartTime
       
@@ -258,13 +259,14 @@ class GatewayHelper {
       
       console.log(`🔄 [${requestId}] Forwarding to auth worker...`)
       
-      // Forward to auth worker (using actualData)
-      const result = await workerInstance.net_default.jTopicRequest(
+      // Forward to auth worker using robust method to handle stale DHT connections
+      const result = await workerInstance.net_default.jTopicRequestRobust(
         'auth',
         'register',
         actualData,
-        {},
-        false  // Force fresh DHT lookup to avoid stale announcements
+        {}, // options
+        3,  // maxRetries
+        100 // baseDelay in ms
       )
       
       console.log(`✅ [${requestId}] Registration processed`)
@@ -308,13 +310,14 @@ class GatewayHelper {
       
       console.log(`🔄 [${requestId}] Forwarding to auth worker...`)
       
-      // Forward to auth worker (using actualData)
-      const result = await workerInstance.net_default.jTopicRequest(
+      // Forward to auth worker using robust method to handle stale DHT connections
+      const result = await workerInstance.net_default.jTopicRequestRobust(
         'auth',
         'login',
         actualData,
-        {},
-        false  // Force fresh DHT lookup to avoid stale announcements
+        {}, // options
+        3,  // maxRetries
+        100 // baseDelay in ms
       )
       
       console.log(`✅ [${requestId}] Login processed`)

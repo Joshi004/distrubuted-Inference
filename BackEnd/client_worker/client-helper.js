@@ -31,195 +31,51 @@ class ClientHelper {
       logger.debug('ClientWorker', 'RPC-OUT', `${method} is exempt from auth key requirement`, null)
     }
     
-    // Robust retry logic for handling connection issues
-    return await ClientHelper.retryTopicRequest(workerInstance, topic, method, requestPayload)
-  }
-  
-  // Retry wrapper for topic requests with exponential backoff
-  static async retryTopicRequest(workerInstance, topic, method, requestPayload, maxRetries = 3) {
-    const baseDelay = 500 // Start with 500ms delay
-    let lastError = null
+    // Use robust topic request that handles stale DHT connections internally
     const sessionId = Math.random().toString(36).substr(2, 9)
     
-    // Log the start of the request session
-    logger.info('ClientWorker', sessionId, `Starting topic request session: ${topic}.${method}`, {
+    // Log the start of the request
+    logger.info('ClientWorker', sessionId, `Starting topic request: ${topic}.${method}`, {
       topic: topic,
       method: method,
-      maxRetries: maxRetries,
       hasAuthKey: !!requestPayload.meta?.key,
       payloadSize: JSON.stringify(requestPayload).length
     })
     
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const attemptId = `${sessionId}-${attempt}`
+    try {
+      const startTime = Date.now()
+      const result = await workerInstance.net_default.jTopicRequestRobust(
+        topic,
+        method,
+        requestPayload,
+        {}, // options
+        3,  // maxRetries
+        200 // baseDelay in ms for client requests
+      )
+      const duration = Date.now() - startTime
       
-      try {
-        // Log attempt start with connection details
-        logger.info('ClientWorker', attemptId, `Attempting topic request (${attempt}/${maxRetries})`, {
-          topic: topic,
-          method: method,
-          attempt: attempt,
-          networkFacilityReady: !!workerInstance.net_default,
-          rpcClientReady: !!workerInstance.net_default?.rpc,
-          lookupServiceReady: !!workerInstance.net_default?.lookup
-        })
-        
-        // Try the request with robust method that tries all available keys
-        const startTime = Date.now()
-        const result = await workerInstance.net_default.jTopicRequest(topic, method, requestPayload, {}, false)
-        const duration = Date.now() - startTime
-        
-        // Log successful request
-        logger.info('ClientWorker', attemptId, `Topic request succeeded`, {
-          topic: topic,
-          method: method,
-          attempt: attempt,
-          duration: `${duration}ms`,
-          responseSize: JSON.stringify(result).length,
-          wasRetry: attempt > 1
-        })
-        
-        // If successful and it was a retry, log success
-        if (attempt > 1) {
-          console.log(`✅ Request succeeded on attempt ${attempt}/${maxRetries} after ${duration}ms`)
-        }
-        
-        return result
-        
-      } catch (error) {
-        lastError = error
-        const isLastAttempt = attempt === maxRetries
-        const duration = Date.now() - (Date.now() - 100) // Approximate duration for failed requests
-        
-        // Enhanced error logging with connection context
-        logger.error('ClientWorker', attemptId, `Topic request failed (${attempt}/${maxRetries})`, {
-          topic: topic,
-          method: method,
-          attempt: attempt,
-          error: error.message,
-          errorStack: error.stack,
-          duration: `${duration}ms`,
-          networkState: {
-            networkFacilityReady: !!workerInstance.net_default,
-            rpcClientReady: !!workerInstance.net_default?.rpc,
-            lookupServiceReady: !!workerInstance.net_default?.lookup,
-            dhtReady: !!workerInstance.net_default?.dht
-          },
-          isRetryable: ClientHelper.isRetryableError(error),
-          isLastAttempt: isLastAttempt
-        })
-        
-        // Check if this is a retryable error
-        const isRetryable = ClientHelper.isRetryableError(error)
-        const isStaleAnnouncementError = ClientHelper.isStaleAnnouncementError(error)
-        
-        if (isRetryable && !isLastAttempt) {
-          let delay = baseDelay * Math.pow(2, attempt - 1) // Exponential backoff
-          
-          // If this appears to be a stale announcement error, use shorter delays
-          if (isStaleAnnouncementError) {
-            delay = Math.min(delay, 1000) // Cap at 1 second for stale announcement retries
-            console.log(`⚠️  Possible stale service announcement detected on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`)
-            console.log('   Note: Using fresh DHT lookup to bypass stale announcements')
-            
-            logger.warn('ClientWorker', `STALE-RETRY-${attempt}`, `Retrying after possible stale announcement`, {
-              method: method,
-              topic: topic,
-              attempt: attempt,
-              maxRetries: maxRetries,
-              delay: delay,
-              error: error.message,
-              errorType: 'possible_stale_announcement',
-              sessionId: sessionId
-            })
-          } else {
-            console.log(`⚠️  ${error.message.split(':')[0]} error on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`)
-            
-            // Log retry attempts for CHANNEL_CLOSED and other significant errors
-            if (error.message.includes('CHANNEL_CLOSED') || error.message.includes('ERR_TOPIC_LOOKUP_EMPTY')) {
-              logger.warn('ClientWorker', `RETRY-${attempt}`, `Retrying after ${error.message.split(':')[0]} error`, {
-                method: method,
-                topic: topic,
-                attempt: attempt,
-                maxRetries: maxRetries,
-                delay: delay,
-                error: error.message,
-                sessionId: sessionId
-              })
-            }
-          }
-          
-          // Wait before retry
-          await ClientHelper.sleep(delay)
-          continue
-        }
-        
-        // If not retryable or last attempt, break and throw
-        break
-      }
+      // Log successful request
+      logger.info('ClientWorker', sessionId, `Topic request succeeded`, {
+        topic: topic,
+        method: method,
+        duration: `${duration}ms`,
+        responseSize: JSON.stringify(result).length
+      })
+      
+      return result
+    } catch (error) {
+      // Log final failure
+      logger.error('ClientWorker', sessionId, `Topic request failed after retries`, {
+        topic: topic,
+        method: method,
+        error: error.message,
+        stack: error.stack
+      })
+      throw error
     }
-    
-    // If we get here, all retries failed
-    const isStaleError = ClientHelper.isStaleAnnouncementError(lastError)
-    
-    logger.error('ClientWorker', sessionId, `All retry attempts exhausted for ${topic}.${method}`, {
-      topic: topic,
-      method: method,
-      totalAttempts: maxRetries,
-      finalError: lastError.message,
-      finalErrorStack: lastError.stack,
-      possibleStaleAnnouncement: isStaleError
-    })
-    
-    console.error(`❌ All ${maxRetries} attempts failed for ${topic}.${method}`)
-    
-    // Provide specific guidance for stale announcement failures
-    if (isStaleError && topic === 'gateway') {
-      console.error(`💡 This looks like a stale DHT announcement issue.`)
-      console.error(`   Suggested fixes:`)
-      console.error(`   1. Wait 5+ minutes for stale announcements to expire`)
-      console.error(`   2. Restart the gateway service`)
-      console.error(`   3. Run the cleanup script: ./cleanup.sh`)
-      console.error(`   4. Check if the gateway worker is actually running`)
-    }
-    
-    throw lastError
   }
   
-  // Check if an error is retryable
-  static isRetryableError(error) {
-    if (!error || !error.message) return false
-    
-    const retryableErrors = [
-      'CHANNEL_CLOSED',
-      'ECONNRESET',
-      'ECONNREFUSED', 
-      'ETIMEDOUT',
-      'ENOTFOUND',
-      'ERR_TOPIC_LOOKUP_EMPTY',
-      'UNKNOWN_METHOD',      // Service might be stale and not have the method
-      'Request timed out',   // Service might be unresponsive (stale)
-      'Connection refused'   // Service might be down (stale announcement)
-    ]
-    
-    return retryableErrors.some(errorType => error.message.includes(errorType))
-  }
-  
-  // Check if an error likely indicates a stale DHT announcement
-  static isStaleAnnouncementError(error) {
-    if (!error || !error.message) return false
-    
-    const staleAnnouncementErrors = [
-      'CHANNEL_CLOSED',      // Service was announced but is no longer running
-      'ECONNREFUSED',        // Service was announced but port is not listening
-      'ETIMEDOUT',           // Service was announced but is unresponsive
-      'UNKNOWN_METHOD',      // Service was announced but doesn't have the expected method
-      'Connection refused',  // Service was announced but connection is refused
-      'Request timed out'    // Service was announced but times out
-    ]
-    
-    return staleAnnouncementErrors.some(errorType => error.message.includes(errorType))
-  }
+
   
   // Sleep utility function
   static sleep(ms) {
