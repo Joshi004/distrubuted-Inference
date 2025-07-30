@@ -57,7 +57,7 @@ Module.prototype.require = function(id) {
 setupGlobalMocks()
 
 // Load ProcessorHelper with mocked dependencies
-const ProcessorHelper = require('../../../processor_worker/processor-helper.js')
+const ProcessorHelper = require('../../../../processor_worker/processor-helper.js')
 
 // Expected values for assertions
 const EXPECTED_OLLAMA_ENDPOINT = 'http://localhost:11434/api/generate'

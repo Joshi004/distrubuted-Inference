@@ -70,7 +70,7 @@ Module.prototype.require = function(id) {
 setupGlobalMocks()
 
 // Load AuthHelper with mocked dependencies
-const AuthHelper = require('../../../auth_worker/auth-helper.js')
+const AuthHelper = require('../../../../auth_worker/auth-helper.js')
 
 // Reset mocks function
 function resetAllMocks() {

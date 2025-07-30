@@ -66,7 +66,7 @@ Module.prototype.require = function(id) {
 }
 
 // Load AuthWorker with mocked SimpleMetrics
-const AuthWorker = require('../../../auth_worker/auth-worker.js')
+const AuthWorker = require('../../../../auth_worker/auth-worker.js')
 
 // Expected values for assertions
 const EXPECTED_STORAGE_FACILITY = ['fac', 'hp-svc-facs-store', 'store', 's0', { storeDir: './data/auth' }, 0]

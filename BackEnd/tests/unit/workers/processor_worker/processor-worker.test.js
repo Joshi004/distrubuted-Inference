@@ -43,7 +43,7 @@ Module.prototype.require = function(id) {
 }
 
 // Load ProcessorWorker with mocked SimpleMetrics
-const ProcessorWorker = require('../../../processor_worker/processor-worker.js')
+const ProcessorWorker = require('../../../../processor_worker/processor-worker.js')
 
 // Expected values for assertions
 const EXPECTED_STORAGE_FACILITY = ['fac', 'hp-svc-facs-store', null, 's0', { storeDir: './data/processor' }, 0]
