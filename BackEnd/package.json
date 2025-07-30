@@ -1,0 +1,39 @@
+{
+  "name": "p2p-string-processor-demo",
+  "version": "1.0.0",
+  "description": "P2P demo with client and gateway workers for string processing",
+  "main": "index.js",
+  "scripts": {
+    "start:cli": "node client_worker/cli-client.js",
+    "start:gateway": "node gateway_worker/gateway-worker.js",
+    "start:processor": "node processor_worker/processor-worker.js",
+    "start:auth": "node auth_worker/auth-worker.js",
+    "start:bridge": "node client_worker/bridge.server.js",
+    "cleanup": "./cleanup.sh",
+    "test": "echo \"Run: npm run start:processor, then npm run start:gateway, then npm run start:auth, then npm run start:cli\"",
+    "dev": "echo \"Development mode - use npm run start:processor, npm run start:gateway, npm run start:auth, and npm run start:cli in separate terminals\""
+  },
+  "dependencies": {
+    "async": "^3.2.1",
+    "bcrypt": "^6.0.0",
+    "bfx-wrk-base": "file:./bfx-wrk-base",
+    "dotenv": "^17.2.1",
+    "express": "^4.18.2",
+    "hp-svc-facs-net": "file:./hp-svc-facs-net",
+    "hp-svc-facs-store": "file:./hp-svc-facs-store",
+    "jsonwebtoken": "^9.0.2",
+    "lodash": "^4.17.21"
+  },
+  "engines": {
+    "node": ">=16.0"
+  },
+  "keywords": [
+    "p2p",
+    "holepunch",
+    "worker",
+    "demo",
+    "string-processing"
+  ],
+  "author": "P2P Demo",
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,6 @@
+{
+  "store": {
+    "storeDir": "./data/gateway",
+    "storePrimaryKey": null
+  }
+} 

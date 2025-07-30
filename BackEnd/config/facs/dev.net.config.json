@@ -1,0 +1,9 @@
+{
+  "net": {
+    "allow": null,
+    "allowLocal": true,
+    "timeout": 30000,
+    "poolLinger": 300000,
+    "allowInsecure": true
+  }
+} 
