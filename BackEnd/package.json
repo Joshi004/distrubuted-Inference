@@ -10,7 +10,9 @@
     "start:auth": "node auth_worker/auth-worker.js",
     "start:bridge": "node client_worker/bridge.server.js",
     "cleanup": "./cleanup.sh",
-    "test": "echo \"Run: npm run start:processor, then npm run start:gateway, then npm run start:auth, then npm run start:cli\"",
+    "test": "brittle tests/unit/**/*.test.js",
+    "test:processor": "brittle tests/unit/workers/processor-worker.test.js",
+    "test:helper": "brittle tests/unit/helpers/processor-helper.test.js",
     "dev": "echo \"Development mode - use npm run start:processor, npm run start:gateway, npm run start:auth, and npm run start:cli in separate terminals\""
   },
   "dependencies": {
@@ -36,5 +38,9 @@
     "string-processing"
   ],
   "author": "P2P Demo",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "brittle": "^3.17.0",
+    "sinon": "^21.0.0"
+  }
 }

@@ -260,22 +260,27 @@ class ProcessorWorker extends Base {
   }
 }
 
-// Create worker instance
-console.log('🔧 Creating Processor Worker instance...')
+// Export the class for testing
+module.exports = ProcessorWorker
 
-const conf = {
-  env: 'development',
-  root: process.cwd()
-}
+// Only execute if this file is run directly (not required)
+if (require.main === module) {
+  // Create worker instance
+  console.log('🔧 Creating Processor Worker instance...')
 
-const ctx = {
-  wtype: 'processor-worker',
-  env: 'dev',
-  root: process.cwd()
-}
+  const conf = {
+    env: 'development',
+    root: process.cwd()
+  }
 
-try {
-  const worker = new ProcessorWorker(conf, ctx)
+  const ctx = {
+    wtype: 'processor-worker',
+    env: 'dev',
+    root: process.cwd()
+  }
+
+  try {
+    const worker = new ProcessorWorker(conf, ctx)
   
   // Start the worker
   console.log('▶️  Starting Processor Worker...')
@@ -307,8 +312,9 @@ try {
     process.exit(0)
   })
   
-} catch (error) {
-  console.error('❌ Failed to create Processor Worker:', error.message)
-  console.error('❌ Error stack:', error.stack)
-  process.exit(1)
+  } catch (error) {
+    console.error('❌ Failed to create Processor Worker:', error.message)
+    console.error('❌ Error stack:', error.stack)
+    process.exit(1)
+  }
 } 
