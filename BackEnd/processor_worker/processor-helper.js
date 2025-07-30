@@ -138,7 +138,7 @@ class ProcessorHelper {
                              "It seems there's no LLM connected to chat with you right now. " +
                              "I'm like a very expensive parrot without my AI friend - I can repeat things, but the magic happens when we're connected! 🦜✨\n\n" +
                              "To wake up the AI and get back to having meaningful conversations:\n" +
-                             "Need detailed setup instructions? Check out our SETUP_GUIDE.md - it's got everything you need to get this digital brain purring again! 🧠🚀\n\n" +
+                             "Check out our SETUP_GUIDE.md - it's got everything you need to get this digital brain purring again! 🧠🚀\n\n" +
                              "Until then, I'll just be here... waiting... and dreaming of electric sheep. 🐑⚡"
         
         // Return as a normal response, not an error
